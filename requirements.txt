@@ -1,0 +1,11 @@
+# 核心
+reportlab>=4.0          # 矢量 PDF 排版
+PyMuPDF>=1.24           # PDF 解析 / 反抽文字审计 / 渲染预览
+Pillow>=10.0            # 图片处理
+
+# 输入解析（Word → PDF）
+python-docx>=1.1
+pywin32>=306            # 仅 Windows + 装了 Office 时需要（Word COM）
+
+# 可选
+pytest>=8.0

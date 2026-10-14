@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""bidviz CLI 入口（开发期可直接 `python bidviz ...`）。
+
+正式使用： pip install -e .  然后直接用 `bidviz ...`
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+from bidviz_cli import main
+
+if __name__ == "__main__":
+    main()

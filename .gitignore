@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+_*verify*.pdf
+_smoke*.pdf
+.venv/
+venv/
+
+# 密钥
+.env
+providers.toml
+
+# 项目数据（体积大，不入库；只保留配置与输入）
+projects/*/work/
+projects/*/output/
+projects/*/inputs/*
+!projects/*/inputs/.gitkeep
+
+# 临时
+_vectest/
+*.log
+~$*
+.DS_Store
+Thumbs.db

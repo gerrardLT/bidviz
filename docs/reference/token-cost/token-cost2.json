@@ -1,0 +1,26 @@
+[
+  {
+    "model": "gpt-image-2",
+    "size": "1024x1024",
+    "image": 1650,
+    "total": 1652
+  },
+  {
+    "model": "gpt-image-2",
+    "size": "2048x1448",
+    "image": 1600,
+    "total": 1602
+  },
+  {
+    "model": "gpt-image-2.5-flare",
+    "size": "2048x1448",
+    "image": 3036,
+    "total": 3038
+  },
+  {
+    "model": "gpt-image-2.5-flare",
+    "size": "4096x2896",
+    "image": 12012,
+    "total": 12014
+  }
+]

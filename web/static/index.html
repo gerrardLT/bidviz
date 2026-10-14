@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>施工组织设计 · 智能图册编辑器</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0b141c; --panel:#0f1d27; --panel2:#132430; --line:#1e3a4f;
+    --txt:#e6eef4; --mut:#8fa9bd; --acc:#2dd4bf; --blue:#38bdf8;
+    --warn:#fbbf24; --red:#f87171; --ok:#4ade80;
+  }
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--txt);display:flex;flex-direction:column;overflow:hidden}
+
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 18px;
+         display:flex;align-items:center;gap:16px;flex-shrink:0;z-index:20}
+  h1{font-size:16px;font-weight:700;color:var(--acc);white-space:nowrap}
+  .grow{flex:1}
+  .btn{background:#17323f;color:#dbeafe;border:1px solid #27506b;padding:7px 14px;border-radius:6px;
+       font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:#1f4256;color:#fff}
+  .btn.pri{background:#0d9488;border-color:#14b8a6;color:#fff}
+  .btn.pri:hover{background:#14b8a6}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .status{font-size:12.5px;color:var(--mut);display:flex;align-items:center;gap:7px;min-width:190px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#3d5566;flex-shrink:0}
+  .dot.on{background:var(--warn);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .wrap{flex:1;display:flex;overflow:hidden}
+
+  /* 侧栏 */
+  aside{width:290px;background:var(--panel);border-right:1px solid var(--line);
+        overflow-y:auto;flex-shrink:0;padding:10px 8px 40px}
+  .srch{width:100%;background:#0a1620;border:1px solid var(--line);color:var(--txt);
+        padding:8px 11px;border-radius:6px;font-size:13px;margin-bottom:10px;outline:none}
+  .srch:focus{border-color:var(--acc)}
+  .chap{font-size:12.5px;font-weight:700;color:var(--blue);padding:11px 8px 5px;
+        border-top:1px solid var(--line);margin-top:6px;line-height:1.45}
+  .chap:first-of-type{border-top:none;margin-top:0}
+  .nav{display:block;width:100%;text-align:left;background:transparent;border:none;
+       color:var(--mut);font-size:12.5px;padding:6px 9px 6px 16px;border-radius:5px;
+       cursor:pointer;line-height:1.4}
+  .nav:hover{background:#16293a;color:#fff}
+  .nav.on{background:#0e3a54;color:var(--acc);font-weight:700}
+  .nav .ed{color:var(--warn);margin-left:5px}
+
+  /* 主区 */
+  main{flex:1;overflow-y:auto;padding:26px 30px 90px;scroll-behavior:smooth}
+  .sec{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+       margin-bottom:26px;overflow:hidden;scroll-margin-top:12px}
+  .sec-h{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--panel);
+         border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .sec-id{font-size:12px;font-weight:700;color:var(--acc);background:#0e3a54;
+          padding:3px 9px;border-radius:5px;flex-shrink:0}
+  .sec-title{font-size:15px;font-weight:700;flex:1;background:transparent;border:none;
+             color:var(--txt);outline:none;min-width:80px}
+  .sec-title:focus{background:#0a1620;border-radius:5px;padding:3px 7px;margin:-3px -7px}
+  .meta{font-size:11.5px;color:var(--mut);white-space:nowrap}
+  .sec-b{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;padding:16px}
+
+  .imgbox{background:#08131b;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+          display:flex;align-items:center;justify-content:center;min-height:230px;position:relative}
+  .imgbox img{width:100%;height:auto;display:block;cursor:zoom-in}
+  .imgbox .ph{color:#4a6478;font-size:13px;padding:60px 20px;text-align:center;line-height:1.7}
+
+  .fields{display:flex;flex-direction:column;gap:11px;min-width:0}
+  label{font-size:11.5px;color:var(--mut);font-weight:700;letter-spacing:.3px;
+        display:flex;align-items:center;gap:6px}
+  textarea{width:100%;background:#08131b;border:1px solid var(--line);color:var(--txt);
+           border-radius:6px;padding:9px 11px;font-size:12.5px;line-height:1.65;resize:vertical;
+           font-family:inherit;outline:none}
+  textarea:focus{border-color:var(--acc)}
+  .ta-prompt{min-height:120px;font-size:12px}
+  .ta-body{min-height:150px;font-size:12.5px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tabs{display:flex;gap:5px;margin-bottom:-1px}
+  .tab{background:#0d1f2b;border:1px solid var(--line);border-bottom:none;color:var(--mut);
+       padding:5px 11px;font-size:11.5px;font-weight:700;border-radius:6px 6px 0 0;cursor:pointer}
+  .tab.on{background:#08131b;color:var(--acc)}
+  .pill{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
+  .pill.ed{background:#422006;color:var(--warn)}
+
+  /* 放大 */
+  #zoom{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;z-index:100;
+        align-items:center;justify-content:center;cursor:zoom-out;padding:20px}
+  #zoom img{max-width:100%;max-height:100%;object-fit:contain}
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0d9488;
+         color:#fff;padding:10px 22px;border-radius:8px;font-size:13.5px;font-weight:600;
+         opacity:0;transition:opacity .25s;pointer-events:none;z-index:200}
+  #toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>施工组织设计 · 智能图册编辑器</h1>
+  <span class="meta" id="docinfo"></span>
+  <div class="grow"></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="statustxt">就绪</span></div>
+  <button class="btn" id="saveall">保存全部改动</button>
+  <button class="btn pri" id="rebuild">重新汇编 PDF</button>
+</header>
+
+<div class="wrap">
+  <aside>
+    <input class="srch" id="srch" placeholder="搜索章节…">
+    <div id="tree"></div>
+  </aside>
+  <main id="doc"></main>
+</div>
+
+<div id="zoom"><img id="zoomimg" alt=""></div>
+<div id="toast"></div>
+
+<script>
+let DOC = null;
+const dirty = new Map();   // sid -> {title, prompt, blocks}
+let polling = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast = m => { const t=$('#toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),1800); };
+
+async function api(path, body) {
+  const o = { method: body ? 'POST' : 'GET', headers: {'Content-Type':'application/json'} };
+  if (body) o.body = JSON.stringify(body);
+  const r = await fetch(path, o);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+/* ---------------- 加载 ---------------- */
+async function load() {
+  DOC = await api('/api/doc');
+  renderTree();
+  renderDoc();
+  const secs = DOC.chapters.reduce((n,c)=>n+c.sections.length,0);
+  const chars = DOC.chapters.reduce((n,c)=>n+c.sections.reduce((m,s)=>m+s.chars,0),0);
+  $('#docinfo').textContent = `${DOC.chapters.length} 章 / ${secs} 节 / ${chars.toLocaleString()} 字`;
+}
+
+function renderTree() {
+  const q = ($('#srch').value || '').trim();
+  const t = $('#tree');
+  t.innerHTML = DOC.chapters.map(c => {
+    const secs = c.sections.filter(s => !q || s.title.includes(q) || s.id.includes(q));
+    if (!secs.length) return '';
+    return `<div class="chap">${esc(c.name)}</div>` + secs.map(s =>
+      `<button class="nav" data-go="${s.id}">${esc(s.title)}<span class="ed"${s.edited?'':' style="display:none"'}>●</span></button>`
+    ).join('');
+  }).join('');
+  t.querySelectorAll('.nav').forEach(b => b.onclick = () => {
+    document.getElementById('sec-' + b.dataset.go)?.scrollIntoView({block:'start'});
+    markNav(b.dataset.go);
+  });
+}
+
+function markNav(sid) {
+  document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.go === sid));
+}
+
+/* ---------------- 文档 ---------------- */
+function renderDoc() {
+  const d = $('#doc');
+  d.innerHTML = DOC.chapters.map(c => c.sections.map(s => secHTML(s)).join('')).join('');
+  bind();
+}
+
+function secHTML(s) {
+  const img = s.image
+    ? `<img src="${s.image}?t=${s.image_ts}" loading="lazy" alt="${esc(s.title)}">`
+    : `<div class="ph">尚未生成主视觉<br>点右侧「重新生图」</div>`;
+  return `
+  <section class="sec" id="sec-${s.id}">
+    <div class="sec-h">
+      <span class="sec-id">${s.id}</span>
+      <input class="sec-title" data-f="title" data-s="${s.id}" value="${esc(s.title)}">
+      <span class="meta">${s.chars.toLocaleString()} 字</span>
+      ${s.edited ? '<span class="pill ed">已编辑</span>' : ''}
+      <button class="btn" data-act="save" data-s="${s.id}">保存</button>
+      <button class="btn" data-act="regen" data-s="${s.id}">重新生图</button>
+      <button class="btn" data-act="reset" data-s="${s.id}">还原</button>
+    </div>
+    <div class="sec-b">
+      <div class="imgbox">${img}</div>
+      <div class="fields">
+        <div class="tabs">
+          <div class="tab on" data-tab="prompt" data-s="${s.id}">生图提示词</div>
+          <div class="tab" data-tab="body" data-s="${s.id}">正文内容</div>
+          <div class="tab" data-tab="struct" data-s="${s.id}">提取结构</div>
+        </div>
+        <textarea class="ta-prompt" data-f="prompt" data-s="${s.id}">${esc(s.prompt)}</textarea>
+        <textarea class="ta-body" data-f="body" data-s="${s.id}" style="display:none">${esc(s.blocks.filter(b=>b.kind!=='heading').map(b=>b.text).join('\n\n'))}</textarea>
+        <div class="struct" data-s="${s.id}" style="display:none;font-size:12.5px;line-height:1.75;color:var(--mut);max-height:320px;overflow:auto"></div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function structHTML(s) {
+  const li = (a) => a.length ? '<ul style="margin:2px 0 8px 16px">' + a.map(x=>`<li>${esc(Array.isArray(x)?x.join(' — '):x)}</li>`).join('') + '</ul>' : '<div style="margin:2px 0 8px 16px;opacity:.5">—</div>';
+  return `<b style="color:var(--blue)">关键参数</b>${li(s.params)}
+          <b style="color:var(--blue)">风险提示</b>${li(s.risks)}
+          <b style="color:var(--blue)">工序步骤</b>${li(s.steps)}
+          <b style="color:var(--blue)">检验试验(ITP)</b>${li(s.itp)}`;
+}
+
+/* ---------------- 交互 ---------------- */
+function bind() {
+  document.querySelectorAll('.sec-title').forEach(el => {
+    el.oninput = () => stash(el.dataset.s, 'title', el.value);
+  });
+  document.querySelectorAll('textarea[data-f]').forEach(el => {
+    el.oninput = () => stash(el.dataset.s, el.dataset.f, el.value);
+  });
+  document.querySelectorAll('.tab').forEach(t => {
+    t.onclick = () => {
+      const sid = t.dataset.s;
+      t.parentNode.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+      const box = t.closest('.fields');
+      box.querySelector('.ta-prompt').style.display = t.dataset.tab === 'prompt' ? '' : 'none';
+      box.querySelector('.ta-body').style.display   = t.dataset.tab === 'body'   ? '' : 'none';
+      const st = box.querySelector('.struct');
+      st.style.display = t.dataset.tab === 'struct' ? '' : 'none';
+      if (t.dataset.tab === 'struct' && !st.dataset.done) {
+        const s = findSec(sid); st.innerHTML = structHTML(s); st.dataset.done = '1';
+      }
+    };
+  });
+  document.querySelectorAll('.imgbox img').forEach(im => {
+    im.onclick = () => { $('#zoomimg').src = im.src; $('#zoom').style.display = 'flex'; };
+  });
+  document.querySelectorAll('button[data-act]').forEach(b => {
+    b.onclick = () => {
+      const sid = b.dataset.s, act = b.dataset.act;
+      if (act === 'save')   saveSec(sid);
+      if (act === 'regen')  regen(sid);
+      if (act === 'reset')  resetSec(sid);
+    };
+  });
+}
+
+function findSec(sid) {
+  for (const c of DOC.chapters) for (const s of c.sections) if (s.id === sid) return s;
+  return null;
+}
+
+function stash(sid, field, value) {
+  const cur = dirty.get(sid) || {};
+  cur[field] = value;
+  dirty.set(sid, cur);
+  updateSaveAll();
+}
+
+function updateSaveAll() {
+  const n = dirty.size;
+  const b = $('#saveall');
+  b.textContent = n ? `保存全部改动 (${n})` : '保存全部改动';
+  b.classList.toggle('pri', n > 0);
+}
+
+async function saveSec(sid) {
+  const cur = dirty.get(sid);
+  if (!cur) { toast('没有改动'); return; }
+  await api('/api/section/' + sid, cur);
+  const s = findSec(sid);
+  if (cur.title) s.title = cur.title;
+  if (cur.prompt) s.prompt = cur.prompt;
+  if (cur.body !== undefined) {
+    const heads = s.blocks.filter(b => b.kind === 'heading');
+    const body = cur.body.split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
+      .map(text => ({ kind: 'body', text }));
+    s.blocks = [...heads, ...body];
+    s.chars = s.blocks.reduce((n,b)=>n+b.text.length,0);
+  }
+  s.edited = true;
+  dirty.delete(sid);
+  updateSaveAll();
+  toast(sid + ' 已保存');
+}
+
+async function saveAll() {
+  for (const sid of [...dirty.keys()]) await saveSec(sid);
+  await load();
+}
+
+async function resetSec(sid) {
+  if (!confirm('撤销该节的全部编辑，恢复原文？')) return;
+  await api(`/api/section/${sid}/reset`, {});
+  dirty.delete(sid);
+  updateSaveAll();
+  await load();
+  toast(sid + ' 已还原');
+}
+
+async function regen(sid) {
+  const cur = dirty.get(sid);
+  if (cur) await saveSec(sid);
+  await api(`/api/section/${sid}/regen`, {});
+  toast('已提交生成：' + sid);
+  startPoll();
+}
+
+function startPoll() {
+  if (polling) return;
+  polling = setInterval(async () => {
+    try {
+      const st = await api('/api/status');
+      $('#statustxt').textContent = st.running ? (st.msg || '处理中…') : '就绪';
+      $('#dot').classList.toggle('on', !!st.running);
+      if (!st.running && st.msg && st.msg.includes('完成')) {
+        clearInterval(polling); polling = null;
+        const s = findSec(st.section);
+        if (s && s.image) {
+          const im = document.querySelector(`#sec-${st.section} .imgbox img`);
+          if (im) im.src = s.image + '?t=' + Date.now();
+          else await load();
+        }
+      }
+    } catch (e) { clearInterval(polling); polling = null; }
+  }, 2500);
+}
+
+/* ---------------- 事件 ---------------- */
+$('#srch').oninput = renderTree;
+$('#saveall').onclick = saveAll;
+$('#zoom').onclick = () => $('#zoom').style.display = 'none';
+$('#rebuild').onclick = async () => {
+  await saveAll();
+  await api('/api/rebuild', {});
+  toast('已开始汇编 PDF');
+  startPoll();
+};
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); }
+  if (e.key === 'Escape') $('#zoom').style.display = 'none';
+});
+
+load().catch(e => { document.body.innerHTML = '<pre style="padding:30px;color:#f87171">' + esc(e.message) + '</pre>'; });
+</script>
+</body>
+</html>

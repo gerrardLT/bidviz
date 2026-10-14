@@ -1,0 +1,50 @@
+[
+  {
+    "model": "gpt-image-2",
+    "size": "1024x1024",
+    "input": null,
+    "image": null,
+    "total": null,
+    "sec": 22.0
+  },
+  {
+    "model": "gpt-image-2",
+    "size": "2048x1448",
+    "input": null,
+    "image": null,
+    "total": null,
+    "sec": 27.8
+  },
+  {
+    "model": "gpt-image-2",
+    "size": "4096x2896",
+    "input": 2,
+    "image": 1600,
+    "total": 1602,
+    "sec": 36.3
+  },
+  {
+    "model": "gpt-image-2.5",
+    "size": "1024x1024",
+    "input": null,
+    "image": null,
+    "total": null,
+    "sec": 31.4
+  },
+  {
+    "model": "gpt-image-2.5",
+    "size": "2048x1448",
+    "input": 2,
+    "image": 1600,
+    "total": 1602,
+    "sec": 44.0
+  },
+  {
+    "model": "gpt-image-2.5",
+    "size": "4096x2896",
+    "input": null,
+    "image": null,
+    "total": null,
+    "sec": 30.1
+  }
+]

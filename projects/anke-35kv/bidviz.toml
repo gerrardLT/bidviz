@@ -1,0 +1,28 @@
+# 安科生物项目 35kV 电力接入工程 · 施工组织设计图册
+
+[project]
+name = "安科生物项目"
+voltage = "35kV"
+doc_type = "施工组织设计"
+header = "安科生物项目 35kV 电力接入工程 · 施工组织设计"
+standard = "执行国家电网 35kV 施工质量验收规范通用评定标准"
+client = "安科生物"
+
+[image]
+provider = "grokimg"            # taomu / grokimg / gemini
+model = "gpt-image-2-2K/4K"
+size = "2048x1448"              # A3 比例 1.414:1
+dir = "work/visuals-2k-yoshub"  # 主视觉输出目录
+fallback_dirs = ["work/visuals-2k", "work/visuals"]
+retries = 3
+pause = 1.5
+
+[paths]
+inputs = "inputs"
+work = "work"
+output = "output"
+
+[ingest]
+chapter_pattern = "^第[一二三四五六七八九十]+章"
+section_pattern = "^第[一二三四五六七八九十]+节"
+min_chars = 220

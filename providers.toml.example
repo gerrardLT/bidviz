@@ -1,0 +1,14 @@
+# 复制到 ~/.bidviz/providers.toml 可集中管理多个供应商
+# 优先级：环境变量 > 本文件 > PiDeck imagegen.json
+
+[providers.taomu]
+baseUrl = "https://taomu.xyz"
+apiKey  = "sk-xxxxx"
+
+[providers.grokimg]
+baseUrl = "https://api.yoshub.com"
+apiKey  = "sk-xxxxx"
+
+[providers.gemini]
+baseUrl = "https://learncompass.top/v1"
+apiKey  = "sk-xxxxx"
