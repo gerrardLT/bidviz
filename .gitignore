@@ -38,6 +38,8 @@ _*.pdf
 ~$*
 .DS_Store
 Thumbs.db
+/audit-layout.json
+/audit-vector.json
 
 # 本地工具状态（mimosa 安全扫描插件的会话快照，机器本地，不入库）
 .mimosa/

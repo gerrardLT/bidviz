@@ -1,0 +1,1284 @@
+{
+  "schema": "bidviz-source-tables/1.0",
+  "generated_at": "2026-10-17T08:25:09",
+  "source": "inputs\\安科生物项目35kV电力接入工程 施组.docx",
+  "note": "阶段 3.0 轻量初判；最终决策见阶段 5 source-assets.json（签认点⑤）",
+  "summary": {
+    "tables": 47,
+    "keep": 35,
+    "redraw": 12,
+    "by_chapter": {
+      "第一章 供货安装方案与技术措施": {
+        "tables": 12,
+        "keep": 10,
+        "redraw": 2
+      },
+      "第二章 计划措施": {
+        "tables": 8,
+        "keep": 5,
+        "redraw": 3
+      },
+      "第三章 实施方案和质量保证措施": {
+        "tables": 7,
+        "keep": 5,
+        "redraw": 2
+      },
+      "第四章 安全文明施工管理体系与措施": {
+        "tables": 4,
+        "keep": 4,
+        "redraw": 0
+      },
+      "第五章 工程重难点": {
+        "tables": 11,
+        "keep": 7,
+        "redraw": 4
+      },
+      "第六章 便利化服务方案": {
+        "tables": 1,
+        "keep": 0,
+        "redraw": 1
+      },
+      "第七章 调试及试运行方案": {
+        "tables": 3,
+        "keep": 3,
+        "redraw": 0
+      },
+      "第八章 售后服务方案": {
+        "tables": 1,
+        "keep": 1,
+        "redraw": 0
+      }
+    }
+  },
+  "tables": [
+    {
+      "index": 1,
+      "section_id": "",
+      "section_path": "第一章 供货安装方案与技术措施 / 第一节 电缆供货与包装运输",
+      "n_rows": 6,
+      "n_cols": 7,
+      "headers": [
+        "序号",
+        "品牌名称",
+        "品牌合规性要求",
+        "产品适配范围",
+        "生产工艺控制要点",
+        "供货保障能力要求",
+        "售后响应标准"
+      ],
+      "preview": [
+        "1",
+        "远东",
+        "纳入本次招标推荐品牌名录",
+        "适配本项目35kV等级电力传输场景",
+        "导体绞合紧密均匀，绝缘层交联度稳定",
+        "可按合同约定工期完成全部电缆生产供货",
+        "2小时内响应现场技术咨询"
+      ],
+      "numeric_density": 0.214,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：名称",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 2,
+      "section_id": "S006",
+      "section_path": "第一章 供货安装方案与技术措施 / 第五节 电缆沟工程施工",
+      "n_rows": 6,
+      "n_cols": 5,
+      "headers": [
+        "工序环节",
+        "材料要求",
+        "工艺控制要点",
+        "质量检验标准",
+        "成品防护措施"
+      ],
+      "preview": [
+        "钢筋排布",
+        "采用HRB400级钢筋，设置双层双向钢筋网，配套设置直径16吊环",
+        "钢筋按标定间距定位绑扎，吊环埋入深度满足受力要求，不得出现倾斜移位",
+        "钢筋间距偏差符合现行规范要求，吊环满焊固定无松动",
+        "钢筋骨架成型后底部垫设垫块，避免沾染泥土油污"
+      ],
+      "numeric_density": 0.2,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：材料",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 3,
+      "section_id": "S006",
+      "section_path": "第一章 供货安装方案与技术措施 / 第五节 电缆沟工程施工",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "原材料类别",
+        "规格参数要求",
+        "验收检测手段",
+        "存放保护措施",
+        "质量判定标准"
+      ],
+      "preview": [
+        "C30商品混凝土",
+        "符合配合比设计要求，抗渗等级满足对应部位规范",
+        "核查开盘鉴定、现场坍落度测试",
+        "按批次划定专用卸料区域，避免不同强度等级混存",
+        "坍落度误差控制在允许范围内，试块强度达标"
+      ],
+      "numeric_density": 0.24,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：规格、参数、材料、判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 4,
+      "section_id": "S012",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十一节 电缆头制作安装",
+      "n_rows": 6,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "选型参数类别",
+        "具体技术要求",
+        "适配本项目施工场景",
+        "合规性依据"
+      ],
+      "preview": [
+        "1",
+        "电压等级",
+        "35kV，适配300mm²截面交联聚乙烯绝缘电缆",
+        "匹配220kV振宁变至项目侧的35kV电压接入需求",
+        "符合项目招标技术参数要求"
+      ],
+      "numeric_density": 0.3,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：参数",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 5,
+      "section_id": "S012",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十一节 电缆头制作安装",
+      "n_rows": 5,
+      "n_cols": 6,
+      "headers": [
+        "构件部位",
+        "材质类型",
+        "规格参数",
+        "处理工艺",
+        "安装位置",
+        "受力要求"
+      ],
+      "preview": [
+        "主支撑横担",
+        "热镀锌角钢",
+        "63×63×6",
+        "整体热浸镀锌防腐",
+        "工井内壁两侧预埋锚栓处",
+        "承载满负荷接头及附件重量无形变"
+      ],
+      "numeric_density": 0.133,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：规格、参数",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 6,
+      "section_id": "S013",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十二节 接地装置安装",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "施工工序",
+        "材质规格",
+        "作业要求",
+        "工艺控制要点",
+        "验收标准"
+      ],
+      "preview": [
+        "定位放线",
+        "采用全站仪配合50m钢卷尺测量",
+        "按设计图纸标定接地极布设点位",
+        "核对点位与构筑物基础的水平距离不小于1m",
+        "点位偏差控制在允许范围内"
+      ],
+      "numeric_density": 0.28,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：规格",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 7,
+      "section_id": "S013",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十二节 接地装置安装",
+      "n_rows": 6,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "防护部位",
+        "处理方式",
+        "防护作用",
+        "检查要求"
+      ],
+      "preview": [
+        "1",
+        "接地极露出地面部位",
+        "涂刷两层防腐专用沥青漆",
+        "隔绝外部空气和水汽侵蚀",
+        "涂层连续均匀，无漏涂脱落"
+      ],
+      "numeric_density": 0.167,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.167）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 8,
+      "section_id": "S013",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十二节 接地装置安装",
+      "n_rows": 7,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "核验项目",
+        "核验标准",
+        "核验方式",
+        "合格判定要求"
+      ],
+      "preview": [
+        "1",
+        "材质类型",
+        "热镀锌角钢",
+        "外观目视与材质证明核查",
+        "表面无锈迹、镀层完整均匀，附带厂家材质检测报告"
+      ],
+      "numeric_density": 0.229,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 9,
+      "section_id": "S015",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十四节 电缆试验实施",
+      "n_rows": 6,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "核查类别",
+        "具体核验内容",
+        "执行标准依据",
+        "责任工种"
+      ],
+      "preview": [
+        "1",
+        "线路状态核查",
+        "确认3295m整段电缆两端终端及中间接头全部完成安装，全线外观无破损、外力挤压痕",
+        "GB/T12706.2-2026",
+        "电缆头制作工"
+      ],
+      "numeric_density": 0.267,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：工种",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 10,
+      "section_id": "S015",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十四节 电缆试验实施",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "资料类别",
+        "内容构成",
+        "核验要求",
+        "移交去向"
+      ],
+      "preview": [
+        "原始试验记录",
+        "工频耐压、局部放电、绝缘电阻全部测试的实时示数记录",
+        "数据连续无涂改，所有测试指标均符合对应标准要求",
+        "项目现场技术管理部门"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": true,
+      "initial_decision": "redraw",
+      "reason": "含流程/衔接标记，关系类内容适合矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 11,
+      "section_id": "S017",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十六节 质量控制与检验",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "隐蔽作业类别",
+        "检查管控要点",
+        "验收执行依据",
+        "旁站管控人员",
+        "留存归档资料"
+      ],
+      "preview": [
+        "电缆沟/井/排管普通土开挖",
+        "核对开挖深度在2-3米区间内，基底土质符合设计承载力要求，槽底无积水、虚土及扰动",
+        "建筑工程施工质量统一验收标准、设计图纸相关要求",
+        "现场土建质检员、监理旁站人员",
+        "基底标高测量记录、土质核查影像资料"
+      ],
+      "numeric_density": 0.04,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.04 低且仅 5 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 12,
+      "section_id": "S017",
+      "section_path": "第一章 供货安装方案与技术措施 / 第十六节 质量控制与检验",
+      "n_rows": 6,
+      "n_cols": 6,
+      "headers": [
+        "管控环节",
+        "责任部门",
+        "具体执行动作",
+        "判定标准",
+        "处置边界",
+        "配套保障措施"
+      ],
+      "preview": [
+        "进场材料核验",
+        "质检部",
+        "核对电缆CCC认证、型式试验报告，现场抽检导体电阻、绝缘厚度、外护套标识",
+        "不符合GB/T12706.2-2026标准及招标参数要求的批次",
+        "禁止让步接收，直接判定为不合格品",
+        "同步留存现场影像及抽检样本，做好状态标记"
+      ],
+      "numeric_density": 0.056,
+      "flow_markers": true,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 13,
+      "section_id": "",
+      "section_path": "第二章 计划措施 / 第一节 劳动力与资源投入计划",
+      "n_rows": 6,
+      "n_cols": 5,
+      "headers": [
+        "作业岗位",
+        "配置人数",
+        "投入作业天数",
+        "核心工作职责",
+        "作业覆盖范围"
+      ],
+      "preview": [
+        "电缆敷设工",
+        "15",
+        "30",
+        "把控电缆牵引走向与敷设节奏",
+        "电缆沟内及排管内全段电缆敷设作业"
+      ],
+      "numeric_density": 0.333,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：人数、天数、岗位",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 14,
+      "section_id": "",
+      "section_path": "第二章 计划措施 / 第一节 劳动力与资源投入计划",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "核心工种",
+        "配置人数",
+        "计划投入天数",
+        "核心作业内容",
+        "技能资质要求"
+      ],
+      "preview": [
+        "电缆头制作工",
+        "4",
+        "10",
+        "完成两侧户内终端及线路中间接头制作安装",
+        "持有高压电缆作业专项操作证"
+      ],
+      "numeric_density": 0.36,
+      "flow_markers": true,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：人数、工种、天数",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 15,
+      "section_id": "S019",
+      "section_path": "第二章 计划措施 / 第二节 总体网络进度计划",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "作业内容",
+        "管控要点",
+        "前置条件",
+        "配套作业"
+      ],
+      "preview": [
+        "1",
+        "电缆及金具材料运输",
+        "装卸全程保护外护套不受磕碰",
+        "土建通道基本清理完成",
+        "现场存放区域设置硬质围挡"
+      ],
+      "numeric_density": 0.16,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.16）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 16,
+      "section_id": "S019",
+      "section_path": "第二章 计划措施 / 第二节 总体网络进度计划",
+      "n_rows": 4,
+      "n_cols": 4,
+      "headers": [
+        "作业工序",
+        "质量控制要点",
+        "安全管控要求",
+        "配套附属动作"
+      ],
+      "preview": [
+        "排管通孔检查",
+        "清除管内残留渣土杂物",
+        "作业人员避让管口正前方",
+        "同步疏通相邻备用排管通道"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.0 低且仅 4 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 17,
+      "section_id": "S019",
+      "section_path": "第二章 计划措施 / 第二节 总体网络进度计划",
+      "n_rows": 4,
+      "n_cols": 4,
+      "headers": [
+        "施工部位",
+        "工艺控制要求",
+        "质量检验标准",
+        "成品保护措施"
+      ],
+      "preview": [
+        "220kV振宁变侧户内终端",
+        "严格按工艺要求控制绝缘层剥切尺寸",
+        "半导电层断口平整无尖刺凸起",
+        "制作完成后做好绝缘防护包裹"
+      ],
+      "numeric_density": 0.062,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.062 低且仅 4 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 18,
+      "section_id": "S020",
+      "section_path": "第二章 计划措施 / 第三节 工期保证措施",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "问题类型",
+        "处置要求",
+        "责任归属",
+        "闭环时限"
+      ],
+      "preview": [
+        "管线位置偏差",
+        "结合现场实际调整排管路径坐标",
+        "设计单位",
+        "会审后2天内"
+      ],
+      "numeric_density": 0.2,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.2）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 19,
+      "section_id": "S020",
+      "section_path": "第二章 计划措施 / 第三节 工期保证措施",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "机械类型",
+        "备用数量",
+        "预留状态",
+        "调度响应时长",
+        "适配施工工序"
+      ],
+      "preview": [
+        "履带式挖掘机",
+        "1台",
+        "提前报备锁定",
+        "2小时",
+        "土石方开挖、沟槽清理"
+      ],
+      "numeric_density": 0.36,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：数量、机械",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 20,
+      "section_id": "S020",
+      "section_path": "第二章 计划措施 / 第三节 工期保证措施",
+      "n_rows": 5,
+      "n_cols": 3,
+      "headers": [
+        "问题类别",
+        "整改执行标准",
+        "验证复核方式"
+      ],
+      "preview": [
+        "土建实体缺陷",
+        "按设计要求完成缺陷修补，恢复构件原有强度与外观",
+        "采用混凝土回弹仪检测实体强度，目测确认外观平整无瑕疵"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.0 低且仅 5 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 21,
+      "section_id": "S023",
+      "section_path": "第三章 实施方案和质量保证措施 / 第三节 电气安装施工方案",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "作业环节",
+        "操作要点",
+        "防护措施",
+        "质量管控标准"
+      ],
+      "preview": [
+        "起重挂钩固定",
+        "选用额定起重量匹配的25t汽车起重机，挂钩挂设在电缆盘预设专用吊装孔位",
+        "挂钩表面衬垫柔性橡胶垫，避免与电缆盘钢结构直接剐蹭",
+        "起吊前做试吊校验，确认挂钩承载无偏移、无滑脱风险"
+      ],
+      "numeric_density": 0.15,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.15）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 22,
+      "section_id": "S023",
+      "section_path": "第三章 实施方案和质量保证措施 / 第三节 电气安装施工方案",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "就位施工环节",
+        "作业操作要点",
+        "质量控制要求",
+        "安全管控要点",
+        "后续衔接工序"
+      ],
+      "preview": [
+        "立柱对位作业",
+        "将预制支架立柱与沟壁标记点位对齐，调整垂直度后临时固定",
+        "立柱整体垂直偏差符合规范允许范围",
+        "站位保持稳固，避免工具滑落磕碰沟内原有设施",
+        "托臂拼装作业"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": true,
+      "initial_decision": "redraw",
+      "reason": "含流程/衔接标记，关系类内容适合矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 23,
+      "section_id": "S023",
+      "section_path": "第三章 实施方案和质量保证措施 / 第三节 电气安装施工方案",
+      "n_rows": 4,
+      "n_cols": 5,
+      "headers": [
+        "作业管控环节",
+        "施工操作要点",
+        "质量控制标准",
+        "配套防护措施",
+        "验收核验要求"
+      ],
+      "preview": [
+        "敷设前通道清理",
+        "全面清扫既有老旧电缆沟内壁杂物，修补沟体破损部位，替换变形缺失的原有井盖",
+        "沟内无尖锐凸起障碍物，排水坡度符合设计要求，积污完全清理干净",
+        "作业全程开启强制通风，安排专人持气体检测仪不间断监测沟内环境",
+        "通过安全员逐段排查签字确认后，方可启动后续敷设工序"
+      ],
+      "numeric_density": 0.1,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.1 低且仅 4 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 24,
+      "section_id": "S023",
+      "section_path": "第三章 实施方案和质量保证措施 / 第三节 电气安装施工方案",
+      "n_rows": 4,
+      "n_cols": 5,
+      "headers": [
+        "张力管控对象",
+        "控制参数阈值",
+        "监测手段配置",
+        "异常处置流程",
+        "过程记录要求"
+      ],
+      "preview": [
+        "牵引端总张力",
+        "不超过规范设定的允许最大值，避免导体拉伸变形",
+        "串联专用张力传感器，配合实时数显装置动态采集数值",
+        "张力监测值接近阈值时立即放缓牵引速度，查明阻力增大原因并处置",
+        "每间隔10米记录一次张力数值，形成完整连续的张力管控台账"
+      ],
+      "numeric_density": 0.1,
+      "flow_markers": true,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：参数",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 25,
+      "section_id": "S024",
+      "section_path": "第三章 实施方案和质量保证措施 / 第四节 质量保证体系建立",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "序号",
+        "审核对象",
+        "审核内容",
+        "判定标准"
+      ],
+      "preview": [
+        "1",
+        "报告出具机构",
+        "国家级第三方检测机构资质",
+        "具备高压电气产品检测对应资质，无超范围出具报告情况"
+      ],
+      "numeric_density": 0.3,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 26,
+      "section_id": "S024",
+      "section_path": "第三章 实施方案和质量保证措施 / 第四节 质量保证体系建立",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "控制环节",
+        "操作要求",
+        "检测方式",
+        "合格判定条件"
+      ],
+      "preview": [
+        "取样环节",
+        "从进场批次电缆中随机截取指定长度试样",
+        "抽取50米电缆分五段截取测试样本",
+        "取样覆盖不同线缆盘，不存在刻意挑选试样行为"
+      ],
+      "numeric_density": 0.05,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 27,
+      "section_id": "S026",
+      "section_path": "第三章 实施方案和质量保证措施 / 第六节 过程质量管控措施",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "互检核查项目",
+        "核查核心要求",
+        "核查判定标准",
+        "不合格处置方式"
+      ],
+      "preview": [
+        "钢筋绑扎作业质量",
+        "检查钢筋间距、搭接长度、绑扎牢固度",
+        "所有参数符合设计及现行规范要求",
+        "现场立即调整重新绑扎直至达标"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 28,
+      "section_id": "S029",
+      "section_path": "第四章 安全文明施工管理体系与措施 / 第三节 有限空间作业专项安全措施",
+      "n_rows": 4,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "通风设备类型",
+        "通风持续时长",
+        "通风覆盖范围",
+        "通风作业要点"
+      ],
+      "preview": [
+        "1",
+        "强制轴流风机",
+        "不少于30分钟",
+        "老旧电缆沟全段",
+        "风机出风口对准井道底部送入新风"
+      ],
+      "numeric_density": 0.2,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：设备",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 29,
+      "section_id": "S029",
+      "section_path": "第四章 安全文明施工管理体系与措施 / 第三节 有限空间作业专项安全措施",
+      "n_rows": 3,
+      "n_cols": 4,
+      "headers": [
+        "校准操作环节",
+        "校准执行标准",
+        "校准合格判定依据",
+        "校准后管控要求"
+      ],
+      "preview": [
+        "设备零点复位",
+        "洁净空气中完成置零",
+        "显示数值回归基准刻度",
+        "粘贴合格校准标识后投入使用"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 30,
+      "section_id": "S032",
+      "section_path": "第四章 安全文明施工管理体系与措施 / 第六节 现场临时用电与消防安全",
+      "n_rows": 5,
+      "n_cols": 2,
+      "headers": [
+        "设备配置参数",
+        "功能作用"
+      ],
+      "preview": [
+        "额定输出功率20kW",
+        "为突发断电场景下的应急照明与有限空间作业通风设备提供持续供电"
+      ],
+      "numeric_density": 0.2,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：参数、设备",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 31,
+      "section_id": "S033",
+      "section_path": "第四章 安全文明施工管理体系与措施 / 第七节 文明施工与环境保持",
+      "n_rows": 8,
+      "n_cols": 7,
+      "headers": [
+        "序号",
+        "管控区域",
+        "管控内容",
+        "执行标准",
+        "检查频次",
+        "责任主体",
+        "考核要求"
+      ],
+      "preview": [
+        "1",
+        "材料堆放区",
+        "管材、钢筋、电缆、工器具分类存放",
+        "堆放整齐稳固，设置清晰标识牌，易燃易爆物品单独隔离存放并配备足额消防器材",
+        "每日巡查一次",
+        "对应区域值守人员",
+        "堆放混乱无标识的限期两小时内整改完成"
+      ],
+      "numeric_density": 0.125,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：频次",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 32,
+      "section_id": "",
+      "section_path": "第五章 工程重难点 / 第一节 工期紧任务重重难点应对",
+      "n_rows": 6,
+      "n_cols": 5,
+      "headers": [
+        "作业模块",
+        "核心工序",
+        "衔接前置条件",
+        "质量控制点",
+        "安全管控重点"
+      ],
+      "preview": [
+        "土建基础施工",
+        "土方开挖、边坡支护、工井浇筑",
+        "测量放线定位核验合格",
+        "混凝土强度满足设计要求",
+        "沟槽临边防护搭设到位"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": true,
+      "initial_decision": "redraw",
+      "reason": "含流程/衔接标记，关系类内容适合矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 33,
+      "section_id": "",
+      "section_path": "第五章 工程重难点 / 第一节 工期紧任务重重难点应对",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "核查类别",
+        "核查要点",
+        "核查标准",
+        "核查结果判定"
+      ],
+      "preview": [
+        "土建作业面条件",
+        "工井内部净空尺寸、排管管口通畅通径",
+        "符合设计图纸标注参数",
+        "满足电缆敷设进场要求"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 34,
+      "section_id": "",
+      "section_path": "第五章 工程重难点 / 第一节 工期紧任务重重难点应对",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "调度资源类别",
+        "对应作业班组",
+        "调度优先级",
+        "保障目标"
+      ],
+      "preview": [
+        "土石方开挖机械",
+        "土石方工班组",
+        "土建阶段最高",
+        "保障沟槽开挖按计划推进"
+      ],
+      "numeric_density": 0.05,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.05 低且仅 5 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 35,
+      "section_id": "S037",
+      "section_path": "第五章 工程重难点 / 第二节 有限空间作业安全重难点应对",
+      "n_rows": 5,
+      "n_cols": 3,
+      "headers": [
+        "识别维度",
+        "判定标准",
+        "处置方式"
+      ],
+      "preview": [
+        "沟体结构完整性",
+        "侧壁无明显裂缝、沉降位移",
+        "对破损部位采用高标号防水砂浆修补加固"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 36,
+      "section_id": "S037",
+      "section_path": "第五章 工程重难点 / 第二节 有限空间作业安全重难点应对",
+      "n_rows": 7,
+      "n_cols": 4,
+      "headers": [
+        "防护装备类别",
+        "装备性能要求",
+        "适用作业场景",
+        "日常检查要点"
+      ],
+      "preview": [
+        "头部防护装备",
+        "符合高强度抗冲击标准的安全帽",
+        "所有进入作业现场的人员佩戴",
+        "检查外壳是否出现裂纹、缓冲垫是否完好固定"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.0 低且仅 7 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 37,
+      "section_id": "S037",
+      "section_path": "第五章 工程重难点 / 第二节 有限空间作业安全重难点应对",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "审批环节",
+        "核查内容",
+        "责任岗位",
+        "核验结果要求"
+      ],
+      "preview": [
+        "1",
+        "作业申请提交",
+        "作业点位基本信息、预计作业时长、作业人员配置明细",
+        "现场施工负责人",
+        "信息填报完整无遗漏"
+      ],
+      "numeric_density": 0.16,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：岗位",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 38,
+      "section_id": "S038",
+      "section_path": "第五章 工程重难点 / 第三节 道路破复与交通组织重难点应对",
+      "n_rows": 7,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "作业环节",
+        "管控要点",
+        "检查标准",
+        "责任岗位"
+      ],
+      "preview": [
+        "1",
+        "路面切割",
+        "沿作业边界规整切割沥青及混凝土面层",
+        "切割边线顺直、无缺角崩边",
+        "路面破拆工"
+      ],
+      "numeric_density": 0.171,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：岗位",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 39,
+      "section_id": "S039",
+      "section_path": "第五章 工程重难点 / 第四节 高压电缆头制作质量重难点应对",
+      "n_rows": 6,
+      "n_cols": 4,
+      "headers": [
+        "序号",
+        "管控环节",
+        "具体实施措施",
+        "管控目标"
+      ],
+      "preview": [
+        "1",
+        "环境温度监测",
+        "布设温度传感装置，每半小时采集一次作业区域温度数据",
+        "实时掌握温度波动情况"
+      ],
+      "numeric_density": 0.208,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.208）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 40,
+      "section_id": "S039",
+      "section_path": "第五章 工程重难点 / 第四节 高压电缆头制作质量重难点应对",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "管控类别",
+        "配置要求",
+        "管控目标",
+        "检查方式"
+      ],
+      "preview": [
+        "空气净化设施",
+        "棚内布设多台工业级空气净化器",
+        "持续过滤空气中漂浮浮尘颗粒",
+        "作业前开机持续净化30分钟"
+      ],
+      "numeric_density": 0.05,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.05 低且仅 5 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 41,
+      "section_id": "S040",
+      "section_path": "第五章 工程重难点 / 第五节 既有设施保护与利旧整修重难点应对",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "序号",
+        "作业类别",
+        "管控内容",
+        "执行标准"
+      ],
+      "preview": [
+        "1",
+        "植被状态排查",
+        "统计作业范围内植被的长势与根系分布情况",
+        "完整记录所有待移栽植株的健康状态"
+      ],
+      "numeric_density": 0.25,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.25）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 42,
+      "section_id": "S040",
+      "section_path": "第五章 工程重难点 / 第五节 既有设施保护与利旧整修重难点应对",
+      "n_rows": 6,
+      "n_cols": 4,
+      "headers": [
+        "序号",
+        "作业环节",
+        "操作要求",
+        "质量控制要点"
+      ],
+      "preview": [
+        "1",
+        "现场清理",
+        "铲除树干周边2至3米范围内碎石、杂草及障碍物",
+        "保证作业空间充足，避免无关杂物影响后续起挖操作"
+      ],
+      "numeric_density": 0.333,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "数值密度 0.333 ≥ 0.30（参数资源型证据）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 43,
+      "section_id": "S045",
+      "section_path": "第六章 便利化服务方案 / 第四节 关键节点便利化措施",
+      "n_rows": 6,
+      "n_cols": 4,
+      "headers": [
+        "管控维度",
+        "具体配套内容",
+        "落地执行标准",
+        "协同保障要求"
+      ],
+      "preview": [
+        "路面保护",
+        "原有沥青路面全覆盖土工布铺垫",
+        "避免重型机械碾压直接损伤原有路面结构",
+        "安排专人全程巡查铺垫完整情况"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "redraw",
+      "reason": "数值密度 0.0 低且仅 6 行，轻量关系表可矢量重绘",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 44,
+      "section_id": "S049",
+      "section_path": "第七章 调试及试运行方案 / 第二节 主要设备调试方案",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "序号",
+        "试验环节",
+        "操作要点",
+        "管控要求"
+      ],
+      "preview": [
+        "1",
+        "试验前检查",
+        "核对接线相序，确认试验区域无无关人员逗留",
+        "设置硬质隔离围栏，悬挂高压警示标识"
+      ],
+      "numeric_density": 0.2,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.2）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 45,
+      "section_id": "S049",
+      "section_path": "第七章 调试及试运行方案 / 第二节 主要设备调试方案",
+      "n_rows": 5,
+      "n_cols": 5,
+      "headers": [
+        "检查部位",
+        "检查内容",
+        "合格判定标准",
+        "检查工具",
+        "不合格处置方式"
+      ],
+      "preview": [
+        "终端外护套",
+        "表面平整度、完整性",
+        "表面光滑无裂纹、气泡、毛刺缺陷",
+        "目视、擦拭布",
+        "打磨修整直至外观达标"
+      ],
+      "numeric_density": 0.0,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "表头命中参数/资源语素：判定",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 46,
+      "section_id": "S049",
+      "section_path": "第七章 调试及试运行方案 / 第二节 主要设备调试方案",
+      "n_rows": 5,
+      "n_cols": 4,
+      "headers": [
+        "序号",
+        "检测类别",
+        "检测对象",
+        "检测状态"
+      ],
+      "preview": [
+        "1",
+        "接地外观检查",
+        "接地母线",
+        "完整记录"
+      ],
+      "numeric_density": 0.2,
+      "flow_markers": false,
+      "initial_decision": "keep",
+      "reason": "证据不足，保真默认保留原表（数值密度 0.2）",
+      "final_decision": null,
+      "final_reason": null
+    },
+    {
+      "index": 47,
+      "section_id": "",
+      "section_path": "第八章 售后服务方案 / 第一节 维修响应时间安排",
+      "n_rows": 7,
+      "n_cols": 5,
+      "headers": [
+        "序号",
+        "故障类别",
+        "处理流程动作",
+        "完成时限",
+        "验收标准"
+      ],
+      "preview": [
+        "1",
+        "电缆终端接触不良",
+        "拆卸检查端子、重新压接紧固、恢复绝缘防护",
+        "4小时内",
+        "接触电阻检测合格，供电恢复正常"
+      ],
+      "numeric_density": 0.343,
+      "flow_markers": true,
+      "initial_decision": "keep",
+      "reason": "数值密度 0.343 ≥ 0.30（参数资源型证据）",
+      "final_decision": null,
+      "final_reason": null
+    }
+  ]
+}

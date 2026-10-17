@@ -1,0 +1,2716 @@
+{
+  "schema": "bidviz-layout-classification/1.0",
+  "version": "v20261017.0832",
+  "generated_at": "2026-10-17T08:32:02",
+  "p1_mode": "md",
+  "p0_chapter_stats": [
+    {
+      "chapter": "封面及总述",
+      "sections": 1,
+      "tables": 0,
+      "images": 0,
+      "positioning": ""
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "sections": 16,
+      "tables": 12,
+      "images": 7,
+      "positioning": ""
+    },
+    {
+      "chapter": "第二章 计划措施",
+      "sections": 3,
+      "tables": 8,
+      "images": 7,
+      "positioning": ""
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "sections": 6,
+      "tables": 7,
+      "images": 14,
+      "positioning": ""
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "sections": 9,
+      "tables": 4,
+      "images": 13,
+      "positioning": ""
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "sections": 6,
+      "tables": 11,
+      "images": 9,
+      "positioning": ""
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "sections": 6,
+      "tables": 1,
+      "images": 1,
+      "positioning": ""
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "sections": 6,
+      "tables": 3,
+      "images": 8,
+      "positioning": ""
+    },
+    {
+      "chapter": "第八章 售后服务方案",
+      "sections": 5,
+      "tables": 1,
+      "images": 1,
+      "positioning": ""
+    }
+  ],
+  "sections": [
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第一节 电缆供货与包装运输",
+      "source_page": 3,
+      "main_class": "D",
+      "aux_classes": [
+        "G",
+        "B"
+      ],
+      "suggested_figures": "电缆层次、护套标识、盘具装卸防护示意",
+      "suggested_tables": "品牌及参数对照、资料核查、标识检查表",
+      "combo": "选型部分通栏表；运输部分独立图文单元",
+      "production": "AI示意＋矢量标注",
+      "content_blocks": [
+        {
+          "name": "一、35kV主用电源电缆选型",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、高压专项测试型式报告",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、成品电缆外护套标识",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、电缆装卸运输防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "选型、报告、标识和运输四个主题分别排。报告要求不能画成已经取得的证书，品牌对照不得添加评分或排名。",
+      "section_id": "S002",
+      "blocks_source_page": 3
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第二节 土石方工程施工",
+      "source_page": 11,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "H"
+      ],
+      "suggested_figures": "开挖回填步骤与沟槽剖面",
+      "suggested_tables": "工序—操作要求—检查及防护要求",
+      "combo": "上工序图，中剖面与原文，下控制表",
+      "production": "AI概念示意；参数矢量化",
+      "content_blocks": [
+        {
+          "name": "一、土石方开挖及回填",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "开挖、回填、外运、质量安全分别成块，分层关系与原文数值一一对应。",
+      "section_id": "S003",
+      "blocks_source_page": 7
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第三节 道路破复工程施工",
+      "source_page": 14,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "G"
+      ],
+      "suggested_figures": "路面破除及恢复分步图、结构层示意",
+      "suggested_tables": "破除与恢复的工序要求表",
+      "combo": "两组阶段图文，下方通栏要求",
+      "production": "AI示意＋依据资料的矢量图",
+      "content_blocks": [
+        {
+          "name": "一、道路破复",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "破除与恢复是不同阶段，不能简单压成一张施工效果图；材料、厚度缺项不自行补足。",
+      "section_id": "S004",
+      "blocks_source_page": 9
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第四节 混凝土工程施工",
+      "source_page": 16,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "放坡挂网喷护、排管包封剖面",
+      "suggested_tables": "施工部位—原材料要求—工艺—养护检查",
+      "combo": "两类构造分别配图，质量原文通栏",
+      "production": "矢量技术示意为主",
+      "content_blocks": [
+        {
+          "name": "一、混凝土浇筑",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "支护混凝土与包封混凝土分开表达；强度等级、厚度和养护条件不能混用。",
+      "section_id": "S005",
+      "blocks_source_page": 10
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第五节 电缆沟工程施工",
+      "source_page": 18,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "电缆沟构造、盖板与支座分解示意",
+      "suggested_tables": "重排现有盖板工序表及原材料表",
+      "combo": "构造主图＋原文说明，原表独立展开",
+      "production": "AI概念图＋矢量节点",
+      "content_blocks": [
+        {
+          "name": "一、电缆沟",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、预制混凝土构件",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "原有两张表优先优化列宽、续表及层级，不为了配图再压缩。尺寸和钢筋布置需图纸支持。",
+      "section_id": "S006",
+      "blocks_source_page": 11
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第六节 工井工程施工",
+      "source_page": 22,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "大规格工井与小型手孔井结构示意",
+      "suggested_tables": "两类井的工序及控制要求表",
+      "combo": "按井型分别图文对应，下方检验要求",
+      "production": "AI概念图＋矢量节点",
+      "content_blocks": [
+        {
+          "name": "一、混凝土工井",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不得把未提供尺寸的大小井画成可据以施工的精确设计图。",
+      "section_id": "S007",
+      "blocks_source_page": 14
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第七节 材料运输管控",
+      "source_page": 24,
+      "main_class": "B",
+      "aux_classes": [
+        "D",
+        "H"
+      ],
+      "suggested_figures": "装车固定、运输交接、现场存放示意",
+      "suggested_tables": "对象—包装防护—运输—交接要求",
+      "combo": "运输流程在上，作业示意与要求在下",
+      "production": "AI示意可用",
+      "content_blocks": [
+        {
+          "name": "一、运输",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "只表达装车运输要求，不能虚构真实运输路线、停靠点或交通许可。",
+      "section_id": "S008",
+      "blocks_source_page": 15
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第八节 电缆保护管敷设",
+      "source_page": 27,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "埋地排管剖面、定向拉管纵向示意",
+      "suggested_tables": "敷设方式—前置条件—控制点—验收",
+      "combo": "两种敷设方式并列展示，原文分别保留",
+      "production": "矢量为主，AI辅助场景",
+      "content_blocks": [
+        {
+          "name": "一、电缆保护管",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "埋地排管与定向拉管不要混成同一工序；轨迹、包封范围及地下管线需有依据。",
+      "section_id": "S009",
+      "blocks_source_page": 16
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第九节 电力支架制作安装",
+      "source_page": 29,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "支架组成、固定位置、焊接防腐节点",
+      "suggested_tables": "选材—加工—安装—核验要求",
+      "combo": "主图带编号，按编号排原文及检查表",
+      "production": "矢量节点为主",
+      "content_blocks": [
+        {
+          "name": "一、电缆支架",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不得根据外观概念图补出臂长、层数、间距或连接做法。",
+      "section_id": "S010",
+      "blocks_source_page": 17
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十节 电缆敷设施工",
+      "source_page": 31,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "H"
+      ],
+      "suggested_figures": "沟内敷设与穿管敷设两组步骤示意",
+      "suggested_tables": "路径—准备—输送—固定—保护要求",
+      "combo": "按两种敷设方式分别成页或连续单元",
+      "production": "AI场景＋矢量流程",
+      "content_blocks": [
+        {
+          "name": "一、电缆沟浅槽敷设",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、埋管内敷设",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "两种工况的速度与控制要求分别登记，不能抽成一个统一速度指标。",
+      "section_id": "S011",
+      "blocks_source_page": 18
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十一节 电缆头制作安装",
+      "source_page": 36,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "D",
+        "G"
+      ],
+      "suggested_figures": "终端制作分步图、中间接头结构及支架节点",
+      "suggested_tables": "选型表、附件构件表、工序核验表",
+      "combo": "选型表、制作图文、安装检查分三类页面",
+      "production": "依据厂家资料的矢量图；AI辅助",
+      "content_blocks": [
+        {
+          "name": "一、电缆终端",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、中间接头",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "制作尺寸、附件结构和冷缩/热缩操作以对应产品资料核对；不依据泛化生图补充。",
+      "section_id": "S012",
+      "blocks_source_page": 21
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十二节 接地装置安装",
+      "source_page": 41,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "D",
+        "G"
+      ],
+      "suggested_figures": "接地极与母线连接、焊接及防腐节点",
+      "suggested_tables": "优化现有工序、材质核验、成品保护表",
+      "combo": "接地图＋编号说明，原表连续排布",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、接地体",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、接地极",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "接地深度、间距、连接要求等属于敏感参数；不同段落口径先标注，不能排图时自行合并。",
+      "section_id": "S013",
+      "blocks_source_page": 24
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十三节 电缆防护作业",
+      "source_page": 46,
+      "main_class": "C",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "防水封堵与防火封堵两类节点",
+      "suggested_tables": "部位—材料—作业—检查要求",
+      "combo": "上节点对照，下原句工序及验收表",
+      "production": "矢量示意为主",
+      "content_blocks": [
+        {
+          "name": "一、电缆防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "防火与防水构造分开表达；没有实测材料不得添加验收合格照片。",
+      "section_id": "S014",
+      "blocks_source_page": 27
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十四节 电缆试验实施",
+      "source_page": 48,
+      "main_class": "G",
+      "aux_classes": [
+        "B",
+        "H"
+      ],
+      "suggested_figures": "试验准备、执行、收尾关系图",
+      "suggested_tables": "保留并优化准备核查及资料移交表",
+      "combo": "上试验流程，下核验表和完整操作要求",
+      "production": "矢量流程，不生成实测波形",
+      "content_blocks": [
+        {
+          "name": "一、电缆耐压试验",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "试验接线图须经技术确认；只画程序与对象，不能伪造试验记录或实际合格结果。",
+      "section_id": "S015",
+      "blocks_source_page": 28
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十五节 通道及附属修整",
+      "source_page": 51,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "H"
+      ],
+      "suggested_figures": "通道清理、利旧修补、绿化恢复分组示意",
+      "suggested_tables": "对象—现状核查—处理要求—完成标准",
+      "combo": "按通道、利旧、绿化三个主题分别图文排布",
+      "production": "AI概念示意可用",
+      "content_blocks": [
+        {
+          "name": "一、通道清理",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、利旧物品整修",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、绿化移栽铲除栽种",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "修整前后对照须标为示意，不能伪装成项目现场实拍。",
+      "section_id": "S016",
+      "blocks_source_page": 30
+    },
+    {
+      "chapter": "第一章 供货安装方案与技术措施",
+      "title": "第十六节 质量控制与检验",
+      "source_page": 57,
+      "main_class": "G",
+      "aux_classes": [
+        "B",
+        "H"
+      ],
+      "suggested_figures": "材料报验、第三方复检、缺陷整改闭环",
+      "suggested_tables": "进场、过程、复检、缺陷四类核查表",
+      "combo": "表格为主，流程图为导航",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、进场材料验收",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、施工过程质检",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、第三方复检配合",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、施工缺陷处理",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不同核验阶段保留各自的责任和资料要求，不能将重复主题的正文删除。",
+      "section_id": "S017",
+      "blocks_source_page": 33
+    },
+    {
+      "chapter": "第二章 计划措施",
+      "title": "第一节 劳动力与资源投入计划",
+      "source_page": 68,
+      "main_class": "D",
+      "aux_classes": [
+        "E",
+        "F"
+      ],
+      "suggested_figures": "人员数量对比、材料进场节点、设备配置关系",
+      "suggested_tables": "人员、材料、机械三套配置表",
+      "combo": "通栏配置表＋小幅时序或数量图",
+      "production": "不需场景大图",
+      "content_blocks": [
+        {
+          "name": "一、分阶段劳动力配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、主要物资供应安排",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、施工机械设备配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "人数和投入天数是不同维度；未确认起止时间与重叠关系前，不计算峰值总人数或绘制资源曲线。",
+      "section_id": "S018",
+      "blocks_source_page": 40
+    },
+    {
+      "chapter": "第二章 计划措施",
+      "title": "第二节 总体网络进度计划",
+      "source_page": 80,
+      "main_class": "E",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "分专业并行时序、里程碑及交接关系",
+      "suggested_tables": "阶段—前置条件—交接要求—验收节点",
+      "combo": "横向时序图在上，说明与条件表在下",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、总进度排布",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、关键节点标识",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、工序作业逻辑",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "工序关系足够时先做关系图；形成定量甘特图或关键路径还需完整持续时间、起止及依赖数据，不自行分配60天。",
+      "section_id": "S019",
+      "blocks_source_page": 47
+    },
+    {
+      "chapter": "第二章 计划措施",
+      "title": "第三节 工期保证措施",
+      "source_page": 92,
+      "main_class": "F",
+      "aux_classes": [
+        "E",
+        "H"
+      ],
+      "suggested_figures": "组织保障关系、偏差响应与资源调配流程",
+      "suggested_tables": "组织、技术、资源、协调保障表",
+      "combo": "关系图导航＋分项保障原文表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、组织保障",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、技术保障",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、资源保障",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、协调沟通",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "备用人员设备与正常投入分别标明，避免在配置统计中重复计入。",
+      "section_id": "S020",
+      "blocks_source_page": 54
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "title": "第一节 项目总体实施方案",
+      "source_page": 107,
+      "main_class": "A",
+      "aux_classes": [
+        "B",
+        "C"
+      ],
+      "suggested_figures": "全项目实施概览、踏勘范围与接口关系示意",
+      "suggested_tables": "目标、实施范围、边界、踏勘核查表",
+      "combo": "目标条＋概念总览图＋原文分区",
+      "production": "AI概念图＋矢量关系",
+      "content_blocks": [
+        {
+          "name": "一、35kV电源接入整体实施策略",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、老旧路段现场踏勘方案细化",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、全流程实施边界管控要求",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "原文没有完整路径坐标时只画范围关系，不画成实际线路平面图；三组先后原则分别表达。",
+      "section_id": "S021",
+      "blocks_source_page": 63
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "title": "第二节 土建工程施工方案",
+      "source_page": 110,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "G"
+      ],
+      "suggested_figures": "土方、道路、混凝土工井、通道整修四组图解",
+      "suggested_tables": "专业工序与控制要求表",
+      "combo": "每个专业主题独立图文单元",
+      "production": "复用第一章已审核底图",
+      "content_blocks": [
+        {
+          "name": "一、土石方开挖及回填",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、道路破复工程",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、混凝土及工井工程",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、通道清理与修整",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "与第一章重复主题可复用图形组件，但原文仍在本章完整保留，强调实施衔接而非删为引用。",
+      "section_id": "S022",
+      "blocks_source_page": 65
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "title": "第三节 电气安装施工方案",
+      "source_page": 119,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "D",
+        "G"
+      ],
+      "suggested_figures": "运输、支架、敷设、接头接地、防护五组图解",
+      "suggested_tables": "各子项材料、安装和防护控制表",
+      "combo": "按五个子项切换模板，不做一张超大总表",
+      "production": "复用技术图＋矢量标注",
+      "content_blocks": [
+        {
+          "name": "一、材料运输与保管",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、电力支架制作安装",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、电缆敷设工艺",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、电缆头制作与接地",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "五、电缆防护与保护管",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不同子项需要不同模板；四张原表应逐张优化，不能为了统一外观合并无关数据。",
+      "section_id": "S023",
+      "blocks_source_page": 70
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "title": "第四节 质量保证体系建立",
+      "source_page": 133,
+      "main_class": "F",
+      "aux_classes": [
+        "A",
+        "G"
+      ],
+      "suggested_figures": "质量管理组织架构、控制点关系",
+      "suggested_tables": "质量目标、岗位职责、关键控制点清单",
+      "combo": "上组织图，下职责表与质量检查表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、工程质量目标承诺",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、质量管理组织架构",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、关键质量控制点设置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "质量目标是承诺，不是已完成的合格率；不得做成实际达成业绩图。",
+      "section_id": "S024",
+      "blocks_source_page": 78
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "title": "第五节 物资采购质量控制",
+      "source_page": 138,
+      "main_class": "G",
+      "aux_classes": [
+        "B"
+      ],
+      "suggested_figures": "供应商审查、进场核验、第三方复检流程",
+      "suggested_tables": "证书报告要素、实物核验、复检资料表",
+      "combo": "上流程，下通栏核查清单",
+      "production": "无需AI场景图",
+      "content_blocks": [
+        {
+          "name": "一、供应商资质审查",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、进场检验制度",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、第三方复检配合机制",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "认证和报告只能列核查要求，不生成看似真实的证书、印章或检测报告。",
+      "section_id": "S025",
+      "blocks_source_page": 81
+    },
+    {
+      "chapter": "第三章 实施方案和质量保证措施",
+      "title": "第六节 过程质量管控措施",
+      "source_page": 142,
+      "main_class": "G",
+      "aux_classes": [
+        "H",
+        "B"
+      ],
+      "suggested_figures": "隐蔽报验闭环、成品保护点位、质量问题示意",
+      "suggested_tables": "检查项目表、成品防护表、问题防治表",
+      "combo": "检验表为主，保护图与缺陷图各配对应原文",
+      "production": "矢量为主，AI辅助概念缺陷图",
+      "content_blocks": [
+        {
+          "name": "一、隐蔽工程验收",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、成品保护方案",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、质量通病防治",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "自检、互检、报验等条件不得省略；缺陷图仅表示问题类型，不代表实际发现。",
+      "section_id": "S026",
+      "blocks_source_page": 83
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第一节 安全文明施工管理目标",
+      "source_page": 149,
+      "main_class": "A",
+      "aux_classes": [
+        "G"
+      ],
+      "suggested_figures": "安全文明目标概览",
+      "suggested_tables": "目标—管控范围—执行要求",
+      "combo": "少量目标条＋完整承诺及指标表",
+      "production": "不需AI大图",
+      "content_blocks": [
+        {
+          "name": "一、安全施工零事故目标",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、现场管控总体指标",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不把安全目标做成实际统计图，也不为目标条删除原文适用范围。",
+      "section_id": "S027",
+      "blocks_source_page": 88
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第二节 安全管理组织机构与职责",
+      "source_page": 150,
+      "main_class": "F",
+      "aux_classes": [
+        "G"
+      ],
+      "suggested_figures": "安全组织架构与报告关系",
+      "suggested_tables": "岗位—职责—履职要求",
+      "combo": "上架构，下职责矩阵与完整原文",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、安全管理组织架构",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、各岗位安全权责划分",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、全员安全履职要求",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "只列原文岗位与关系，不虚构人员姓名、资质证件或新增审批权限。",
+      "section_id": "S028",
+      "blocks_source_page": 88
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第三节 有限空间作业专项安全措施",
+      "source_page": 154,
+      "main_class": "H",
+      "aux_classes": [
+        "B",
+        "C",
+        "G"
+      ],
+      "suggested_figures": "井口、通风、监测、监护位置示意；准入流程",
+      "suggested_tables": "审批、装备、气体检测、进出登记要求表",
+      "combo": "风险场景图＋作业流程＋通栏核查表",
+      "production": "场景可AI示意，程序与参数矢量化",
+      "content_blocks": [
+        {
+          "name": "作业审批监护制度",
+          "class": "F＋G",
+          "slots": "审批/准入关系图＋权限核查表",
+          "note": ""
+        },
+        {
+          "name": "作业前通风操作",
+          "class": "B＋C",
+          "slots": "通风位置示意＋操作要求表",
+          "note": ""
+        },
+        {
+          "name": "有害气体浓度检测、检测仪校准",
+          "class": "G＋D",
+          "slots": "检测对象与校准要求表",
+          "note": ""
+        },
+        {
+          "name": "正压式呼吸器及配套装备",
+          "class": "D＋H",
+          "slots": "装备示意与配置要求，避免无依据的设备型号",
+          "note": ""
+        },
+        {
+          "name": "现场人员进出管控",
+          "class": "B＋G",
+          "slots": "进出登记流程与字段说明",
+          "note": ""
+        }
+      ],
+      "note": "高风险内容须技术审核；准入审批、通风检测、持续监护和清点退出不可被简化成几个无条件箭头。",
+      "mixed_split_example": true,
+      "section_id": "S029",
+      "blocks_source_page": 91
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第四节 土建施工安全防护措施",
+      "source_page": 158,
+      "main_class": "H",
+      "aux_classes": [
+        "C",
+        "B"
+      ],
+      "suggested_figures": "边坡、道路疏导、临边洞口三类防护示意",
+      "suggested_tables": "风险部位—防护措施—检查要求",
+      "combo": "每类风险一组图文，底部控制表",
+      "production": "AI示意＋矢量位置标注",
+      "content_blocks": [
+        {
+          "name": "一、边坡防坍塌防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、道路施工交通疏导",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、临边洞口防坠防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "交通路线需现场资料，防护尺寸不由图片推算，图文须与原要求逐项对应。",
+      "section_id": "S030",
+      "blocks_source_page": 94
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第五节 电气安装与调试安全措施",
+      "source_page": 162,
+      "main_class": "H",
+      "aux_classes": [
+        "B",
+        "G"
+      ],
+      "suggested_figures": "带电隔离边界示意、停送电授权与检查流程",
+      "suggested_tables": "作业场景—防护—操作及监护要求",
+      "combo": "场景示意为辅，完整程序与检查表为主",
+      "production": "技术矢量图为主",
+      "content_blocks": [
+        {
+          "name": "一、高压触电相关防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、带电区域作业防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、停送电操作规范",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不让AI自行生成电气接线或倒闸操作顺序；原文技术疑点先交专业审核。",
+      "section_id": "S031",
+      "blocks_source_page": 96
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第六节 现场临时用电与消防安全",
+      "source_page": 166,
+      "main_class": "C",
+      "aux_classes": [
+        "H",
+        "D",
+        "G"
+      ],
+      "suggested_figures": "临时配电层级示意、消防配置区域关系",
+      "suggested_tables": "用电设备、消防器材、存放及巡检要求",
+      "combo": "上系统/分区示意，下配置及管理表",
+      "production": "矢量为主，场景可辅助",
+      "content_blocks": [
+        {
+          "name": "一、临时用电系统配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、作业区域消防配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、易燃易爆品存放",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "临电与消防不是同一系统，分图表达；真实布点、容量和回路需依据已确认方案。",
+      "section_id": "S032",
+      "blocks_source_page": 99
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第七节 文明施工与环境保持",
+      "source_page": 170,
+      "main_class": "H",
+      "aux_classes": [
+        "C",
+        "G"
+      ],
+      "suggested_figures": "围挡场容、抑尘、绿化保护示意",
+      "suggested_tables": "污染或影响类型—措施—检查要求",
+      "combo": "场景小图＋通栏措施表",
+      "production": "AI概念示意可用",
+      "content_blocks": [
+        {
+          "name": "一、场容场貌管理标准",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、施工扬尘管控措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、声光电污染管控",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、绿化作业成品防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不虚构噪声、扬尘实测曲线或项目现场治理成果；绿化保护与施工范围明确区分。",
+      "section_id": "S033",
+      "blocks_source_page": 101
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第八节 安全教育培训与技术交底",
+      "source_page": 177,
+      "main_class": "B",
+      "aux_classes": [
+        "F",
+        "G"
+      ],
+      "suggested_figures": "入场教育、工序交底、应急演练流程",
+      "suggested_tables": "对象—内容—时机—考核—记录",
+      "combo": "流程在上，培训交底要求表在下",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、进场人员安全教育",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、关键工序安全交底",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、安全应急演练组织",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不必使用通用会议照片充数；培训记录和演练照片如需展示，必须来自真实材料。",
+      "section_id": "S034",
+      "blocks_source_page": 105
+    },
+    {
+      "chapter": "第四章 安全文明施工管理体系与措施",
+      "title": "第九节 安全检查与隐患整改机制",
+      "source_page": 181,
+      "main_class": "G",
+      "aux_classes": [
+        "B",
+        "F"
+      ],
+      "suggested_figures": "多层级检查及整改复查闭环",
+      "suggested_tables": "隐患事项—责任—整改—复核资料",
+      "combo": "闭环图导航＋检查机制原文表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、多层级安全隐患排查",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、隐患闭环整改流程",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、外部检查配合对接",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "未完成的检查不能填为已销号；监督主体与整改责任主体不能混为一列。",
+      "section_id": "S035",
+      "blocks_source_page": 107
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "title": "第一节 工期紧任务重重难点应对",
+      "source_page": 185,
+      "main_class": "H",
+      "aux_classes": [
+        "E",
+        "F"
+      ],
+      "suggested_figures": "工序交叉、等待与资源调配关系",
+      "suggested_tables": "节点压力—影响—保障措施—衔接条件",
+      "combo": "时序问题图＋应对矩阵",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、工期节点要求",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、交叉作业协调",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、工序优化措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "强调工期瓶颈和措施，不重复第二章配置表；未完成逻辑计算不得标为已验证关键路径。",
+      "section_id": "S036",
+      "blocks_source_page": 110
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "title": "第二节 有限空间作业安全重难点应对",
+      "source_page": 194,
+      "main_class": "H",
+      "aux_classes": [
+        "C",
+        "B"
+      ],
+      "suggested_figures": "老旧沟道空间限制、监护及防护位置示意",
+      "suggested_tables": "环境风险—影响—装备—管控要求",
+      "combo": "风险定位图＋对应对策表＋处置流程",
+      "production": "AI场景辅助，技术审核后使用",
+      "content_blocks": [
+        {
+          "name": "一、作业环境复杂风险",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、空间作业防护要求",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、作业管控措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "与第四章复用场景底图，但本节突出复杂环境和困难原因，不编造事故概率或风险等级。",
+      "section_id": "S037",
+      "blocks_source_page": 115
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "title": "第三节 道路破复与交通组织重难点应对",
+      "source_page": 204,
+      "main_class": "H",
+      "aux_classes": [
+        "C",
+        "E"
+      ],
+      "suggested_figures": "占道作业与通行分隔示意、分段施工关系",
+      "suggested_tables": "通行、扬尘、噪声等问题对策表",
+      "combo": "区域示意图＋时段及措施表",
+      "production": "概念图可AI，实际交通图须资料",
+      "content_blocks": [
+        {
+          "name": "一、主干道施工影响",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、环境管控挑战",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、施工保障措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "没有现场底图和审批边界时，不画成可执行交通组织平面图。",
+      "section_id": "S038",
+      "blocks_source_page": 121
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "title": "第四节 高压电缆头制作质量重难点应对",
+      "source_page": 214,
+      "main_class": "H",
+      "aux_classes": [
+        "C",
+        "G"
+      ],
+      "suggested_figures": "电缆头关键部位局部放大、环境影响定位",
+      "suggested_tables": "工艺或环境因素—影响—控制—验证",
+      "combo": "局部示意为主，旁配问题对策表",
+      "production": "依据产品结构的矢量图",
+      "content_blocks": [
+        {
+          "name": "一、制作工艺关键影响",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、现场环境干扰",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、质量管控措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "与第一章制作步骤图区分，突出质量难点；不同章节冷缩及加热等表达应核对适用对象后再统一制图。",
+      "section_id": "S039",
+      "blocks_source_page": 127
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "title": "第五节 既有设施保护与利旧整修重难点应对",
+      "source_page": 224,
+      "main_class": "H",
+      "aux_classes": [
+        "C",
+        "B"
+      ],
+      "suggested_figures": "新旧设施隔离、既有电缆保护、修补位置示意",
+      "suggested_tables": "保护对象—风险—保护或整修措施",
+      "combo": "对照示意＋分对象措施表",
+      "production": "AI概念图＋矢量标识",
+      "content_blocks": [
+        {
+          "name": "一、既有设施保护风险",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、利旧整修技术要求",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、保护实施措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "既有设施位置和运行状态不能由AI补全；利旧与新建对象用不同标识明确区分。",
+      "section_id": "S040",
+      "blocks_source_page": 132
+    },
+    {
+      "chapter": "第五章 工程重难点",
+      "title": "第六节 外部协调与验收送电重难点应对",
+      "source_page": 232,
+      "main_class": "H",
+      "aux_classes": [
+        "F",
+        "E"
+      ],
+      "suggested_figures": "供电、市政园林、交警等参与方协调流程",
+      "suggested_tables": "主体—事项—前置资料—协调及缓冲要求",
+      "combo": "多方分道流程图＋协调风险表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、多部门审批复杂性",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、工期顺延风险",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、协调保障措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "外部审批用原文的办理和协调要求，不添加未经确认的审批完成日期或保证时效。",
+      "section_id": "S041",
+      "blocks_source_page": 137
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "title": "第一节 便利化服务总体方案",
+      "source_page": 241,
+      "main_class": "A",
+      "aux_classes": [
+        "F",
+        "G"
+      ],
+      "suggested_figures": "服务覆盖与对接通道关系图",
+      "suggested_tables": "服务范围、执行边界、配套交付清单",
+      "combo": "范围概览＋边界原文表",
+      "production": "矢量为主，少量概念图",
+      "content_blocks": [
+        {
+          "name": "一、安科生物电力工程服务目标",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、全工期服务响应通道",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、全线工程服务覆盖范围",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、全流程配套服务边界界定",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "服务边界与免费范围属于承诺性正文，不可为卡片化而省略限制条件。",
+      "section_id": "S042",
+      "blocks_source_page": 142
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "title": "第二节 服务人员技术能力配置",
+      "source_page": 242,
+      "main_class": "F",
+      "aux_classes": [
+        "D",
+        "G"
+      ],
+      "suggested_figures": "负责人、协调人员、技术小组关系图",
+      "suggested_tables": "岗位—人数—能力资质—职责",
+      "combo": "上人员关系，下通栏配置表",
+      "production": "无需AI人物照片",
+      "content_blocks": [
+        {
+          "name": "一、项目负责人资质配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、专职协调人员配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、现场技术服务小组",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、作业人员资质匹配配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "人数及资格按原文；不要生成具体人员头像、证件或不存在的任职信息。",
+      "section_id": "S043",
+      "blocks_source_page": 143
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "title": "第三节 现场协调与沟通机制",
+      "source_page": 245,
+      "main_class": "F",
+      "aux_classes": [
+        "B",
+        "C"
+      ],
+      "suggested_figures": "跨单位沟通流程、四类责任网格关系",
+      "suggested_tables": "联络事项—主体—频次—交接记录",
+      "combo": "协同关系图＋责任接口表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、每日工序进度碰头沟通",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、专项物资对接联络",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、施工区域网格化责任划分",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、跨单位协同对接保障",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "四类网格可画逻辑分区，但没有现场坐标时不能当成实际责任区地图。",
+      "section_id": "S044",
+      "blocks_source_page": 144
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "title": "第四节 关键节点便利化措施",
+      "source_page": 247,
+      "main_class": "G",
+      "aux_classes": [
+        "F",
+        "H"
+      ],
+      "suggested_figures": "关键节点与对应服务支持关系",
+      "suggested_tables": "节点—配套服务—执行要求—协同保障",
+      "combo": "节点条＋通栏服务对照表",
+      "production": "矢量为主，可复用场景图",
+      "content_blocks": [
+        {
+          "name": "一、有限空间作业配套支持",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、建成区路段施工配套服务",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、验收送电全流程配套",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、易损件储备及流程简化服务",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "重点体现本节提供的支持与便利，不再重复完整施工工艺图。",
+      "section_id": "S045",
+      "blocks_source_page": 145
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "title": "第五节 应急响应与故障处理",
+      "source_page": 249,
+      "main_class": "H",
+      "aux_classes": [
+        "F",
+        "E",
+        "D"
+      ],
+      "suggested_figures": "故障联络与响应流程、备件保障关系",
+      "suggested_tables": "触发事项—时限—动作—责任与备件",
+      "combo": "响应流程＋时效及资源表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、突发事件联络传递路径",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、现场备品备件存放设置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、全天候服务对接渠道",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、故障处置兜底执行规则",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "8小时制定处置方案与8小时完成修复是不同承诺，按本段原文标注，不与售后章擅自统一。",
+      "section_id": "S046",
+      "blocks_source_page": 147
+    },
+    {
+      "chapter": "第六章 便利化服务方案",
+      "title": "第六节 文档与培训便捷服务",
+      "source_page": 251,
+      "main_class": "G",
+      "aux_classes": [
+        "B",
+        "F"
+      ],
+      "suggested_figures": "文档归档结构、预审与培训流程",
+      "suggested_tables": "资料类别—内容—对象—指导或预审要求",
+      "combo": "资料清单为主，流程辅助",
+      "production": "无需AI场景图",
+      "content_blocks": [
+        {
+          "name": "一、竣工资料模板辅助",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、一对一运维操作指导",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、运维资料电子化配套",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、专项验收资料预审服务",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不得把服务计划画成已经完成的培训、已移交档案或正式验收凭证。",
+      "section_id": "S047",
+      "blocks_source_page": 148
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "title": "第一节 调试与试运行总体流程",
+      "source_page": 254,
+      "main_class": "B",
+      "aux_classes": [
+        "E",
+        "G"
+      ],
+      "suggested_figures": "调试、试运行、验收总体流程",
+      "suggested_tables": "前置条件—核验内容—交接要求",
+      "combo": "总体流程＋准入清单＋完整操作要求",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、标准化作业流程",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、工序衔接逻辑",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、关键前置条件确认",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、送电前协调准备",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "送电、试运行和验收关系须与实际批准程序核对；不能仅按图形美观重排顺序。",
+      "section_id": "S048",
+      "blocks_source_page": 150
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "title": "第二节 主要设备调试方案",
+      "source_page": 258,
+      "main_class": "G",
+      "aux_classes": [
+        "B",
+        "C"
+      ],
+      "suggested_figures": "电缆、接头、接地、支架排管检测点位",
+      "suggested_tables": "检测项目—方法—判定—记录要求",
+      "combo": "检测对象小图＋通栏检验矩阵",
+      "production": "技术矢量图为主",
+      "content_blocks": [
+        {
+          "name": "一、电源电缆试验",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、电缆头质量检测",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、接地装置测试",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、支架保护管复核",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "只展示原文试验计划与判定要求；没有检测数据时不生成实际波形、数值或通过结论。",
+      "section_id": "S049",
+      "blocks_source_page": 152
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "title": "第三节 系统联合调试方法",
+      "source_page": 264,
+      "main_class": "B",
+      "aux_classes": [
+        "C",
+        "G",
+        "H"
+      ],
+      "suggested_figures": "联合调试阶段关系、经确认的系统关系示意",
+      "suggested_tables": "核对对象—操作—监测—异常条件",
+      "combo": "系统关系图＋分项操作核验表",
+      "production": "依据设计资料的矢量图",
+      "content_blocks": [
+        {
+          "name": "一、全路径通电测试",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、有限空间隔离保护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、空载合闸试验",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、多回路负载分配",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "原文提及系统接线、多回路和控制模块，不等于已给出完整系统图；制图前应核对设计范围、回路和设备清单。",
+      "section_id": "S050",
+      "blocks_source_page": 156
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "title": "第四节 性能指标与功能验证",
+      "source_page": 269,
+      "main_class": "G",
+      "aux_classes": [
+        "D"
+      ],
+      "suggested_figures": "保护验证与数据比对逻辑示意",
+      "suggested_tables": "指标—原文要求—验证方法—资料依据",
+      "combo": "指标表为主，流程或检测点位图为辅",
+      "production": "矢量表图，不生成检测数据",
+      "content_blocks": [
+        {
+          "name": "一、电气性能参数",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、保护功能校验",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、外护套标识核查",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、多源数据比对",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "目标、标准要求、实测值分开；没有实测数据时不画性能曲线或合格率图。",
+      "section_id": "S051",
+      "blocks_source_page": 159
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "title": "第五节 异常故障应对措施",
+      "source_page": 275,
+      "main_class": "H",
+      "aux_classes": [
+        "B",
+        "F"
+      ],
+      "suggested_figures": "按电气、有限空间、受阻、事故区分的处置流程",
+      "suggested_tables": "异常类型—处置—复核—恢复条件",
+      "combo": "异常分支图＋完整处置原文表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、电气故障处置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、有限空间风险应对",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、路径受阻应对",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、安全事故处理",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "流程的判断条件与恢复条件均须有原文依据，不新增技术处置步骤。",
+      "section_id": "S052",
+      "blocks_source_page": 162
+    },
+    {
+      "chapter": "第七章 调试及试运行方案",
+      "title": "第六节 试运行组织与保障",
+      "source_page": 279,
+      "main_class": "F",
+      "aux_classes": [
+        "E",
+        "D",
+        "G"
+      ],
+      "suggested_figures": "试运行指挥关系及巡检安排",
+      "suggested_tables": "岗位、巡检、物资、移交条件四类表",
+      "combo": "上组织关系，下巡视与保障表",
+      "production": "无需AI大图",
+      "content_blocks": [
+        {
+          "name": "一、试运行指挥小组",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、现场巡检安排",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、调试物资准备",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、验收移交条件",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "周期、数量按原文；试运行记录与验收条件不能表示为已经完成。",
+      "section_id": "S053",
+      "blocks_source_page": 165
+    },
+    {
+      "chapter": "第八章 售后服务方案",
+      "title": "第一节 维修响应时间安排",
+      "source_page": 285,
+      "main_class": "E",
+      "aux_classes": [
+        "H",
+        "G"
+      ],
+      "suggested_figures": "报修、到场、处置等事件时效条",
+      "suggested_tables": "保留常规故障时限表，复杂故障及违约另列",
+      "combo": "上时效概览，下分类承诺原文",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、故障到场时限承诺",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、常规故障处理时效",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、复杂故障修复时限",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、超时违约兜底措施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "不同故障类别不能串成累计时间轴；8小时定位和方案的动作对象不能改成8小时全部修复。违约条款完整保留。",
+      "section_id": "S054",
+      "blocks_source_page": 168
+    },
+    {
+      "chapter": "第八章 售后服务方案",
+      "title": "第二节 人员配备合理性安排",
+      "source_page": 288,
+      "main_class": "F",
+      "aux_classes": [
+        "D",
+        "E"
+      ],
+      "suggested_figures": "售后团队关系、值班交接示意",
+      "suggested_tables": "岗位人数、技能、轮班、对接职责表",
+      "combo": "架构图＋人员和值班要求表",
+      "production": "不需AI人物图",
+      "content_blocks": [
+        {
+          "name": "一、专属售后团队配置",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、服务人员技能要求",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、值班轮换制度规划",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、业主方对接机制",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "五、团队人员管理规范",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "原文团队人数、值班制度分别保留；不自行补排具体人员班表或调和人数口径。",
+      "section_id": "S055",
+      "blocks_source_page": 169
+    },
+    {
+      "chapter": "第八章 售后服务方案",
+      "title": "第三节 日常运维工作流程",
+      "source_page": 290,
+      "main_class": "B",
+      "aux_classes": [
+        "E",
+        "G"
+      ],
+      "suggested_figures": "季度检测、回访、隐患处置与归档闭环",
+      "suggested_tables": "巡检对象—检查项目—周期—记录",
+      "combo": "周期导航＋闭环图＋完整巡检要求",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、季度例行检测实施",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、定期回访服务开展",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、隐患闭环处置管理",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、运维资料归档留存",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "周期性任务适合日历式表格，不适合工地效果大图；不生成实际巡检成果。",
+      "section_id": "S056",
+      "blocks_source_page": 171
+    },
+    {
+      "chapter": "第八章 售后服务方案",
+      "title": "第四节 事故应对方案",
+      "source_page": 293,
+      "main_class": "H",
+      "aux_classes": [
+        "B",
+        "F"
+      ],
+      "suggested_figures": "故障响应、联动、修复后核验与恢复送电流程",
+      "suggested_tables": "事件—责任—处置—许可或复核条件",
+      "combo": "分支处置图＋责任及恢复条件表",
+      "production": "矢量为主",
+      "content_blocks": [
+        {
+          "name": "一、突发故障处置预案",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、有限空间作业防护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、多部门联动协调",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、恢复送电流程管控",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "五、故障处置超时约束机制",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "恢复送电保留申请、指令、核验等条件；不能把故障修复和授权送电合并为一步。",
+      "section_id": "S057",
+      "blocks_source_page": 172
+    },
+    {
+      "chapter": "第八章 售后服务方案",
+      "title": "第五节 巡视与维护后续服务",
+      "source_page": 296,
+      "main_class": "E",
+      "aux_classes": [
+        "G",
+        "D"
+      ],
+      "suggested_figures": "巡视周期、特殊天气触发、备件支持关系",
+      "suggested_tables": "维保范围、巡视周期、备件供应、档案清单",
+      "combo": "周期条＋通栏服务范围表",
+      "production": "无需AI大图",
+      "content_blocks": [
+        {
+          "name": "一、缺陷责任期维保范围",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "二、定期巡视工作安排",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "三、绿化配套后续维护",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "四、常用备件供应保障",
+          "class": "",
+          "slots": "",
+          "note": ""
+        },
+        {
+          "name": "五、运维档案留存管理",
+          "class": "",
+          "slots": "",
+          "note": ""
+        }
+      ],
+      "note": "本节出现复杂问题8小时完成排查修复，与其他段落8小时定位并制定方案口径不同；制作统一时效图前列待确认，不自行改文。",
+      "section_id": "S058",
+      "blocks_source_page": 174
+    }
+  ],
+  "p2_global": {
+    "cross_chapter_objects": [
+      {
+        "object": "有限空间作业",
+        "sections": [
+          {
+            "chapter": "第四章 安全",
+            "title": "第三节 有限空间作业专项安全措施"
+          },
+          {
+            "chapter": "第五章 工程",
+            "title": "第二节 有限空间作业安全重难点应对"
+          },
+          {
+            "chapter": "第六章 便利",
+            "title": "第四节 关键节点便利化措施"
+          },
+          {
+            "chapter": "第八章 售后",
+            "title": "第四节 事故应对方案"
+          },
+          {
+            "chapter": "第七章 调试",
+            "title": "第三节 系统联合调试方法"
+          },
+          {
+            "chapter": "第七章 调试",
+            "title": "第五节 异常故障应对措施"
+          }
+        ]
+      },
+      {
+        "object": "过程质量管控措施",
+        "sections": [
+          {
+            "chapter": "第三章 实施",
+            "title": "第六节 过程质量管控措施"
+          },
+          {
+            "chapter": "第五章 工程",
+            "title": "第四节 高压电缆头制作质量重难点应对"
+          },
+          {
+            "chapter": "第四章 安全",
+            "title": "第七节 文明施工与环境保持"
+          },
+          {
+            "chapter": "第五章 工程",
+            "title": "第二节 有限空间作业安全重难点应对"
+          }
+        ]
+      },
+      {
+        "object": "故障处置",
+        "sections": [
+          {
+            "chapter": "第六章 便利",
+            "title": "第五节 应急响应与故障处理"
+          },
+          {
+            "chapter": "第七章 调试",
+            "title": "第五节 异常故障应对措施"
+          },
+          {
+            "chapter": "第八章 售后",
+            "title": "第四节 事故应对方案"
+          }
+        ]
+      },
+      {
+        "object": "电力支架制作安装",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第九节 电力支架制作安装"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第三节 电气安装施工方案"
+          },
+          {
+            "chapter": "第一章 供货",
+            "title": "第十一节 电缆头制作安装"
+          }
+        ]
+      },
+      {
+        "object": "电缆头制作",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第十一节 电缆头制作安装"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第三节 电气安装施工方案"
+          },
+          {
+            "chapter": "第五章 工程",
+            "title": "第四节 高压电缆头制作质量重难点应对"
+          }
+        ]
+      },
+      {
+        "object": "空间作业防护",
+        "sections": [
+          {
+            "chapter": "第五章 工程",
+            "title": "第二节 有限空间作业安全重难点应对"
+          },
+          {
+            "chapter": "第八章 售后",
+            "title": "第四节 事故应对方案"
+          },
+          {
+            "chapter": "第四章 安全",
+            "title": "第五节 电气安装与调试安全措施"
+          }
+        ]
+      },
+      {
+        "object": "质量控制",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第十六节 质量控制与检验"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第四节 质量保证体系建立"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第五节 物资采购质量控制"
+          }
+        ]
+      },
+      {
+        "object": "道路破复与交通组织重难点应对",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第三节 道路破复工程施工"
+          },
+          {
+            "chapter": "第五章 工程",
+            "title": "第三节 道路破复与交通组织重难点应对"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第二节 土建工程施工方案"
+          }
+        ]
+      },
+      {
+        "object": "关键节点",
+        "sections": [
+          {
+            "chapter": "第二章 计划",
+            "title": "第二节 总体网络进度计划"
+          },
+          {
+            "chapter": "第六章 便利",
+            "title": "第四节 关键节点便利化措施"
+          }
+        ]
+      },
+      {
+        "object": "土石方开挖及回填",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第二节 土石方工程施工"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第二节 土建工程施工方案"
+          }
+        ]
+      },
+      {
+        "object": "外护套标识",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第一节 电缆供货与包装运输"
+          },
+          {
+            "chapter": "第七章 调试",
+            "title": "第四节 性能指标与功能验证"
+          }
+        ]
+      },
+      {
+        "object": "工井工程",
+        "sections": [
+          {
+            "chapter": "第一章 供货",
+            "title": "第六节 工井工程施工"
+          },
+          {
+            "chapter": "第三章 实施",
+            "title": "第二节 土建工程施工方案"
+          }
+        ]
+      }
+    ],
+    "mixed_split_suggestions": [
+      {
+        "chapter": "第一章 供货安装方案与技术措施",
+        "title": "第一节 电缆供货与包装运输",
+        "main_class": "D",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第一章 供货安装方案与技术措施",
+        "title": "第十六节 质量控制与检验",
+        "main_class": "G",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第二章 计划措施",
+        "title": "第三节 工期保证措施",
+        "main_class": "F",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第三章 实施方案和质量保证措施",
+        "title": "第二节 土建工程施工方案",
+        "main_class": "B",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第三章 实施方案和质量保证措施",
+        "title": "第三节 电气安装施工方案",
+        "main_class": "B",
+        "blocks": 5,
+        "reason": "5 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第四章 安全文明施工管理体系与措施",
+        "title": "第三节 有限空间作业专项安全措施",
+        "main_class": "H",
+        "blocks": 5,
+        "reason": "5 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第四章 安全文明施工管理体系与措施",
+        "title": "第七节 文明施工与环境保持",
+        "main_class": "H",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第六章 便利化服务方案",
+        "title": "第一节 便利化服务总体方案",
+        "main_class": "A",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第六章 便利化服务方案",
+        "title": "第二节 服务人员技术能力配置",
+        "main_class": "F",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第六章 便利化服务方案",
+        "title": "第三节 现场协调与沟通机制",
+        "main_class": "F",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第六章 便利化服务方案",
+        "title": "第四节 关键节点便利化措施",
+        "main_class": "G",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第六章 便利化服务方案",
+        "title": "第五节 应急响应与故障处理",
+        "main_class": "H",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第六章 便利化服务方案",
+        "title": "第六节 文档与培训便捷服务",
+        "main_class": "G",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第七章 调试及试运行方案",
+        "title": "第一节 调试与试运行总体流程",
+        "main_class": "B",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第七章 调试及试运行方案",
+        "title": "第二节 主要设备调试方案",
+        "main_class": "G",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第七章 调试及试运行方案",
+        "title": "第三节 系统联合调试方法",
+        "main_class": "B",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第七章 调试及试运行方案",
+        "title": "第四节 性能指标与功能验证",
+        "main_class": "G",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第七章 调试及试运行方案",
+        "title": "第五节 异常故障应对措施",
+        "main_class": "H",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第七章 调试及试运行方案",
+        "title": "第六节 试运行组织与保障",
+        "main_class": "F",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第八章 售后服务方案",
+        "title": "第一节 维修响应时间安排",
+        "main_class": "E",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第八章 售后服务方案",
+        "title": "第二节 人员配备合理性安排",
+        "main_class": "F",
+        "blocks": 5,
+        "reason": "5 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第八章 售后服务方案",
+        "title": "第三节 日常运维工作流程",
+        "main_class": "B",
+        "blocks": 4,
+        "reason": "4 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第八章 售后服务方案",
+        "title": "第四节 事故应对方案",
+        "main_class": "H",
+        "blocks": 5,
+        "reason": "5 个下一级主题跨形态，建议逐块选版式"
+      },
+      {
+        "chapter": "第八章 售后服务方案",
+        "title": "第五节 巡视与维护后续服务",
+        "main_class": "E",
+        "blocks": 5,
+        "reason": "5 个下一级主题跨形态，建议逐块选版式"
+      }
+    ],
+    "sample_suggestions": {
+      "D": {
+        "chapter": "第一章 供货安装方案",
+        "title": "第一节 电缆供货与包装运输"
+      },
+      "B": {
+        "chapter": "第一章 供货安装方案",
+        "title": "第二节 土石方工程施工"
+      },
+      "C": {
+        "chapter": "第一章 供货安装方案",
+        "title": "第四节 混凝土工程施工"
+      },
+      "G": {
+        "chapter": "第一章 供货安装方案",
+        "title": "第十四节 电缆试验实施"
+      },
+      "E": {
+        "chapter": "第二章 计划措施",
+        "title": "第二节 总体网络进度计划"
+      },
+      "F": {
+        "chapter": "第二章 计划措施",
+        "title": "第三节 工期保证措施"
+      },
+      "A": {
+        "chapter": "第三章 实施方案和质",
+        "title": "第一节 项目总体实施方案"
+      },
+      "H": {
+        "chapter": "第四章 安全文明施工",
+        "title": "第三节 有限空间作业专项安全措施"
+      }
+    }
+  },
+  "p3_rules": {
+    "original_tables": {
+      "total": 47,
+      "keep": 35,
+      "redraw": 12,
+      "redraw_items": [
+        {
+          "index": 10,
+          "section_id": "S015",
+          "reason": "含流程/衔接标记，关系类内容适合矢量重绘"
+        },
+        {
+          "index": 11,
+          "section_id": "S017",
+          "reason": "数值密度 0.04 低且仅 5 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 16,
+          "section_id": "S019",
+          "reason": "数值密度 0.0 低且仅 4 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 17,
+          "section_id": "S019",
+          "reason": "数值密度 0.062 低且仅 4 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 20,
+          "section_id": "S020",
+          "reason": "数值密度 0.0 低且仅 5 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 22,
+          "section_id": "S023",
+          "reason": "含流程/衔接标记，关系类内容适合矢量重绘"
+        },
+        {
+          "index": 23,
+          "section_id": "S023",
+          "reason": "数值密度 0.1 低且仅 4 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 32,
+          "section_id": "",
+          "reason": "含流程/衔接标记，关系类内容适合矢量重绘"
+        },
+        {
+          "index": 34,
+          "section_id": "",
+          "reason": "数值密度 0.05 低且仅 5 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 36,
+          "section_id": "S037",
+          "reason": "数值密度 0.0 低且仅 7 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 40,
+          "section_id": "S039",
+          "reason": "数值密度 0.05 低且仅 5 行，轻量关系表可矢量重绘"
+        },
+        {
+          "index": 43,
+          "section_id": "S045",
+          "reason": "数值密度 0.0 低且仅 6 行，轻量关系表可矢量重绘"
+        }
+      ],
+      "note": "初判仅供建议；最终决策在阶段 5 source-assets.json（签认点⑤）"
+    },
+    "original_images": {
+      "total_places": 60,
+      "note": "60 处内嵌图片逐项 keep/redraw/replace 决策在阶段 5"
+    },
+    "named_redraw_pages": [
+      84,
+      108,
+      155,
+      256
+    ],
+    "issues_ref": "work/issues.json（open ? 条）"
+  }
+}

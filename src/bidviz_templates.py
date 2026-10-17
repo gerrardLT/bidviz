@@ -80,16 +80,23 @@ class ProseBlock:
 
 @dataclass
 class PagePlan:
-    """T-B1 页规划：标题区 → KPI 三区 → 左图右文 → 底部图标表。"""
+    """页规划：标题区 → KPI → 内容区（图/矢量图型/正文/表）→ 页脚。
+
+    T-B1（阶段 2）用 icon_table_*；V1.3 阶段 3 模板用 tables + vector。
+    """
     chapter: str = ""
     section: str = ""
     page_no: int = 1
     total_pages: int = 1
+    template_id: str = "T-B1"
+    main_class: str = ""
     kpis: list[KPI] = field(default_factory=list)
     figure: FigureSlot | None = None
     prose: list[ProseBlock] = field(default_factory=list)
     icon_table_headers: list[str] = field(default_factory=list)
     icon_table_rows: list[list[str]] = field(default_factory=list)
+    tables: list[dict] = field(default_factory=list)     # [{caption,headers,rows,col_ratios}]
+    vector: dict | None = None                           # {kind, ...}（timeline/org/chevron）
     footer_note: str = ""
 
 
@@ -459,14 +466,306 @@ def footer_skyline(sheet: Sheet, tk: dict, x: float, y: float, w: float,
     return h
 
 
-# ---------------------------------------------------------------- T-B1 页装配器
+# ---------------------------------------------------------------- 矢量图型库（阶段 3.5）
+#
+# 四个图型全部「纯代码 + 真实文字」：数据逐字取自原文（三级标题/岗位名/风险句），
+# 不含日期推算、不含人名、不含任何模型生成内容；颜色只引用 tokens。
+
+
+def _arrow(sheet: Sheet, x: float, y: float, size: float, color: str) -> None:
+    """右向箭头（线 + 两条斜线箭头，避免依赖字形符号）。y 为箭头纵中心。"""
+    sheet.line(x, y, x + size, y, color, 1.0)
+    sheet.line(x + size, y, x + size - 3.6, y - 2.8, color, 1.0)
+    sheet.line(x + size, y, x + size - 3.6, y + 2.8, color, 1.0)
+
+
+def process_strip(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                  steps: Sequence[str]) -> float:
+    """横向工序条：n 个步骤框 + 箭头连接；步骤名逐字原文（≤8 字截断）。"""
+    steps = [s for s in steps if str(s).strip()]
+    if not steps:
+        return 0.0
+    accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    text_main = _tk(tk, "palette", "text_main", "#1a2c38")
+    box_h = 30.0
+    gap = 14.0
+    n = len(steps)
+    box_w = (w - gap * (n - 1)) / n
+    for i, s in enumerate(steps):
+        bx = x + i * (box_w + gap)
+        sheet.rect(bx, y, box_w, box_h, fill="white", stroke=border, lw=0.7)
+        sheet.text(bx + box_w / 2, y + 9, str(s), 8.6, True, text_main,
+                   align="center", max_w=box_w - 6)
+        if i < n - 1:
+            _arrow(sheet, bx + box_w + 2.5, y + box_h / 2, gap - 5, accent)
+    return box_h
+
+
+def chevron_cards(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                  cards: Sequence[dict], max_h: float | None = None) -> float:
+    """风险对策卡列：每卡 = 左侧警示条 + 标题 + 原文句；文字逐字原文。"""
+    if not cards:
+        return 0.0
+    accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
+    warn = _tk(tk, "palette", "warn_red", "#c0392b")
+    text_main = _tk(tk, "palette", "text_main", "#1a2c38")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    size_small = float(_tk(tk, "typography", "small", 8.4))
+    gap = 8.0
+    cy = y
+    used = 0.0
+    for c in cards:
+        body = str(c.get("body", ""))
+        lines = wrap(body, size_small, w - 22)[:4]
+        card_h = 20.0 + len(lines) * (size_small * 1.45) + 8.0
+        if max_h is not None and used + card_h + gap > max_h:
+            break
+        sheet.rect(x, cy, w, card_h, fill="white", stroke=border, lw=0.7)
+        sheet.rect(x, cy, 3.0, card_h, fill=warn)
+        sheet.text(x + 12, cy + 6, str(c.get("title", ""))[:12], 9.2, True, accent,
+                   max_w=w - 20)
+        ty = cy + 20.0
+        for ln in lines:
+            sheet.text(x + 12, ty, ln, size_small, False, text_main)
+            ty += size_small * 1.45
+        cy += card_h + gap
+        used += card_h + gap
+    return used - gap if used > gap else used
+
+
+def timeline_bar(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                 phases: Sequence[dict]) -> float:
+    """阶段时序条（无日期）：n 段分段条 + 段名；**不推算任何起止日期**（保真铁律）。"""
+    phases = [p for p in phases if str(p.get("label", "")).strip()]
+    if not phases:
+        return 0.0
+    header_bg = _tk(tk, "palette", "header_bg", "#1f4e79")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    row_alt = _tk(tk, "palette", "row_alt_light", "#f8fbfd")
+    text_main = _tk(tk, "palette", "text_main", "#1a2c38")
+    muted = _tk(tk, "palette", "muted", "#5a6e7c")
+    bar_h = 30.0
+    seg_w = w / len(phases)
+    for i, p in enumerate(phases):
+        sx = x + i * seg_w
+        fill = row_alt if i % 2 else "white"
+        sheet.rect(sx, y, seg_w, bar_h, fill=fill, stroke=header_bg, lw=0.9)
+        sheet.text(sx + seg_w / 2, y + 5, str(p["label"]), 8.6, True, text_main,
+                   align="center", max_w=seg_w - 8)
+        sheet.text(sx + seg_w / 2, y + bar_h + 4, f"阶段 {i + 1}", 7.4, False, muted,
+                   align="center")
+        if i < len(phases) - 1:
+            _arrow(sheet, sx + seg_w - 5.5, y + bar_h / 2, 11.0, header_bg)
+    return bar_h + 14.0
+
+
+def org_chart(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+              nodes: Sequence[str]) -> float:
+    """组织关系图：首岗位居中为顶，其余横排一层；只画原文出现的岗位名。"""
+    nodes = [str(n).strip() for n in nodes if str(n).strip()]
+    if not nodes:
+        return 0.0
+    accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    text_main = _tk(tk, "palette", "text_main", "#1a2c38")
+    box_w, box_h = 150.0, 26.0
+    top_x = x + (w - box_w) / 2
+    sheet.rect(top_x, y, box_w, box_h, fill="white", stroke=accent, lw=1.2)
+    sheet.text(x + w / 2, y + 7, nodes[0], 9.4, True, accent, align="center",
+               max_w=box_w - 8)
+    rest = nodes[1:8]
+    if not rest:
+        return box_h
+    row_y = y + box_h + 34.0
+    stem_x = x + w / 2
+    sheet.line(stem_x, y + box_h, stem_x, row_y - box_h / 2 - 8, border, 0.8)
+    n = len(rest)
+    rw = min(120.0, (w - 16 * (n - 1)) / n)
+    total_w = n * rw + 16 * (n - 1)
+    rx0 = x + (w - total_w) / 2
+    bus_y = row_y - box_h / 2 - 8
+    sheet.line(rx0 + rw / 2, bus_y, rx0 + total_w - rw / 2, bus_y, border, 0.8)
+    for i, name in enumerate(rest):
+        bx = rx0 + i * (rw + 16)
+        sheet.line(bx + rw / 2, bus_y, bx + rw / 2, row_y - box_h / 2, border, 0.8)
+        sheet.rect(bx, row_y - box_h / 2, rw, box_h, fill="white", stroke=border, lw=0.8)
+        sheet.text(bx + rw / 2, row_y - box_h / 2 + 7, name, 8.4, False, text_main,
+                   align="center", max_w=rw - 6)
+    return (row_y + box_h / 2) - y
+
+
+# ---------------------------------------------------------------- 通用数据表（阶段 3.4）
+
+from bidviz_vector import Cell, TableSpec   # noqa: E402
+
+
+def data_table_height(tk: dict, w: float, headers: Sequence[str],
+                      rows: Sequence[Sequence[str]],
+                      col_ratios: Sequence[float] | None = None) -> float:
+    """数据表高度估算（caption + 表头 + 行；与 Sheet.table 同口径）。"""
+    cap_h = 16.0
+    size = 9.0
+    pad = 5.0
+    ratios = list(col_ratios) if col_ratios else [1.0 / max(1, len(headers))] * len(headers)
+    col_w = [w * r for r in ratios]
+    h = size * 1.6 + pad * 2
+    for row in rows:
+        lines = 1
+        for i, cell in enumerate(row):
+            cw = (col_w[i] if i < len(col_w) else w) - pad * 2
+            lines = max(lines, len(wrap(str(cell), size, cw)))
+        h += max(13.2 * lines + pad * 2, size * 1.45 + pad * 2)
+    return h + cap_h
+
+
+def data_table(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+               caption: str, headers: Sequence[str], rows: Sequence[Sequence[str]],
+               col_ratios: Sequence[float] | None = None,
+               max_h: float | None = None) -> tuple[float, int]:
+    """通栏数据表：题注（强调蓝）+ Sheet.table；返回 (占用高度, 已画行数)。
+
+    max_h 不足时截断到能画的行，剩余行由调用方续排（续页重复表头）。
+    """
+    accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
+    header_bg = _tk(tk, "palette", "header_bg", "#1f4e79")
+    ratios = list(col_ratios) if col_ratios else [1.0 / max(1, len(headers))] * len(headers)
+    spec = TableSpec(headers=[str(h) for h in headers],
+                     rows=[[str(c) for c in r] for r in rows],
+                     col_w=[w * r for r in ratios], header_bg=header_bg,
+                     font_size=9.0, pad=5.0, header_size=9.5)
+    sheet.text(x, y, caption, 9.5, True, accent, max_w=w)
+    used, drawn = sheet.table(spec, x, y + 16.0, max_h=(max_h - 16.0) if max_h else None)
+    return used + 16.0, drawn
+
+
+# ---------------------------------------------------------------- 页骨架与 8 类模板（阶段 3.4）
+
+
+def _page_frame(sheet: Sheet, tk: dict, plan: PagePlan) -> tuple[float, float, float]:
+    """公共骨架：标题区 + 可选 KPI；返回 (content_x, content_w, cy)。"""
+    margin_x = float(_tk(tk, "spacing", "margin_x", 72.0))
+    margin_top = float(_tk(tk, "spacing", "margin_top", 82.0))
+    gap_row = float(_tk(tk, "spacing", "gap_row", 14.2))
+    content_x = margin_x
+    content_w = sheet.w - margin_x * 2
+    cy = margin_top - 40
+    title_h = title_block(sheet, tk, content_x, cy, content_w,
+                          plan.chapter, plan.section, plan.page_no, plan.total_pages)
+    cy += title_h + gap_row
+    kpi_h = kpi_strip(sheet, tk, content_x, cy, content_w, plan.kpis)
+    cy += kpi_h + (gap_row if kpi_h else 0)
+    return content_x, content_w, cy
+
+
+def _footer_anchor(sheet: Sheet, tk: dict) -> float:
+    margin_bottom = float(_tk(tk, "spacing", "margin_bottom", 62.0))
+    return sheet.h - margin_bottom + 20
+
+
+def _render_figure_prose_table(sheet: Sheet, tk: dict, plan: PagePlan,
+                               right_kind: str = "prose") -> None:
+    """A/C/H 共用：中部 [图 | 右栏(prose/chevron)] + 底部表（装得下的第一张）。"""
+    gap_row = float(_tk(tk, "spacing", "gap_row", 14.2))
+    gap_col = float(_tk(tk, "spacing", "gap_col", 22.6))
+    x, w, cy = _page_frame(sheet, tk, plan)
+    y_footer = _footer_anchor(sheet, tk)
+
+    tables = plan.tables or []
+    table_h = 0.0
+    first_table = None
+    if tables:
+        t0 = tables[0]
+        first_table = t0
+        table_h = data_table_height(tk, w, t0.get("headers", []), t0.get("rows", []),
+                                    t0.get("col_ratios"))
+    icon_h = icon_table_height(tk, w, plan.icon_table_headers, plan.icon_table_rows) \
+        if plan.icon_table_headers else 0.0
+    bottom_h = max(table_h, icon_h)
+
+    vec_h = 0.0
+    if plan.vector and plan.vector.get("kind") == "chevron_cards":
+        cards = plan.vector.get("cards", [])
+        vec_h = sum(20.0 + min(4, len(wrap(str(c.get("body", "")), 8.4, w * 0.45 - 22)))
+                    * 12.2 + 8.0 + 8.0 for c in cards) if cards else 0.0
+
+    mid_y = cy
+    mid_h = max(120.0, (y_footer - gap_row - bottom_h) - mid_y) if (bottom_h or 1) else \
+        (y_footer - mid_y)
+    if plan.vector and plan.vector.get("kind") == "chevron_cards":
+        mid_h = max(120.0, (y_footer - gap_row - bottom_h - vec_h * 0.5) - mid_y)
+
+    left_ratio = 0.55
+    left_w = (w - gap_col) * left_ratio
+    right_w = (w - gap_col) * (1 - left_ratio)
+
+    if plan.figure:
+        figure_with_callouts(sheet, tk, x, mid_y, left_w, mid_h, plan.figure)
+    rx = x + left_w + gap_col
+    if right_kind == "chevron" and plan.vector:
+        chevron_cards(sheet, tk, rx, mid_y, right_w,
+                      plan.vector.get("cards", []), max_h=mid_h)
+    else:
+        prose_column(sheet, tk, rx, mid_y, right_w, plan.prose, mid_h)
+        if plan.vector and plan.vector.get("kind") == "chevron_cards":
+            chevron_cards(sheet, tk, rx, mid_y + 90.0, right_w,
+                          plan.vector.get("cards", []), max_h=mid_h - 90.0)
+
+    ty = y_footer - gap_row - bottom_h
+    if icon_h and plan.icon_table_headers:
+        icon_table(sheet, tk, x, ty, w, plan.icon_table_headers, plan.icon_table_rows)
+    elif first_table:
+        data_table(sheet, tk, x, ty, w, first_table.get("caption", ""),
+                   first_table.get("headers", []), first_table.get("rows", []),
+                   first_table.get("col_ratios"))
+    footer_skyline(sheet, tk, x, y_footer, w, plan.footer_note)
+
+
+def _render_vector_then_tables(sheet: Sheet, tk: dict, plan: PagePlan,
+                               vector_first: bool = True) -> None:
+    """E/F/G 共用：标题 + [KPI] + 矢量图型（时序/组织/工序）+ 通栏表序列。"""
+    gap_row = float(_tk(tk, "spacing", "gap_row", 14.2))
+    x, w, cy = _page_frame(sheet, tk, plan)
+    y_footer = _footer_anchor(sheet, tk)
+
+    if vector_first and plan.vector:
+        kind = plan.vector.get("kind")
+        if kind == "timeline_bar":
+            vh = timeline_bar(sheet, tk, x, cy, w, plan.vector.get("phases", []))
+        elif kind == "org_chart":
+            vh = org_chart(sheet, tk, x, cy, w, plan.vector.get("nodes", []))
+        elif kind == "process_strip":
+            vh = process_strip(sheet, tk, x, cy, w, plan.vector.get("steps", []))
+        else:
+            vh = 0.0
+        cy += vh + gap_row
+    elif plan.figure:
+        fh = min(300.0, y_footer - cy - 120.0)
+        if fh > 80:
+            figure_with_callouts(sheet, tk, x, cy, w, fh, plan.figure)
+            cy += fh + gap_row
+
+    max_h = y_footer - gap_row - cy
+    for t in plan.tables:
+        th = data_table_height(tk, w, t.get("headers", []), t.get("rows", []),
+                               t.get("col_ratios"))
+        if max_h <= 40:
+            break
+        used, drawn = data_table(sheet, tk, x, cy, w, t.get("caption", ""),
+                                 t.get("headers", []), t.get("rows", []),
+                                 t.get("col_ratios"), max_h=max_h)
+        cy += used + 6.0
+        max_h -= used + 6.0
+    footer_skyline(sheet, tk, x, y_footer, w, plan.footer_note)
+
+
+def compose_page_ta1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-A1 总览目标型：KPI≤3 + 总览图 + 范围边界正文 + 任务对照表。"""
+    _render_figure_prose_table(sheet, tk, plan)
 
 
 def compose_page_tb1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
-    """T-B1 版式装配（S003 样板）：标题区 → KPI 三区 → 左图右文 → 底部图标表 → 页脚。
-
-    所有尺寸从 tokens 取；布局比例固定（左 55% / 右 45%）。
-    """
+    """T-B1 工艺流程型（阶段 2 golden 版式）：KPI + 左图右文 + 图标表。"""
     w = sheet.w
     h = sheet.h
     margin_x = float(_tk(tk, "spacing", "margin_x", 72.0))
@@ -510,21 +809,102 @@ def compose_page_tb1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
     prose_column(sheet, tk, content_x + left_w + gap_col, mid_y, right_w,
                  plan.prose, mid_h)
 
-    # 5) 底部图标表（钉在页脚线上方）
+    # 5) 底部图标表（钉在页脚线上方）；无 icon_table 时回退画 page-plan 第一张通用表
     if icon_h:
         icon_table(sheet, tk, content_x, icon_y, content_w,
                    plan.icon_table_headers, plan.icon_table_rows)
+    elif plan.tables:
+        t0 = plan.tables[0]
+        t_h = data_table_height(tk, content_w, t0.get("headers", []),
+                                t0.get("rows", []), t0.get("col_ratios"))
+        data_table(sheet, tk, content_x, y_footer - gap_row - t_h, content_w,
+                   t0.get("caption", ""), t0.get("headers", []),
+                   t0.get("rows", []), t0.get("col_ratios"))
 
     # 6) 页脚
     footer_skyline(sheet, tk, content_x, y_footer, content_w, plan.footer_note)
 
 
-# ---------------------------------------------------------------- 入口
+def compose_page_tc1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-C1 构造空间型：构造主图 + 矢量编号叠标 + 原文对应 + 参数表。"""
+    _render_figure_prose_table(sheet, tk, plan)
+
+
+def compose_page_td1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-D1 参数资源型：通栏表为主，无 KPI 无图（小幅识别图不占版面）。"""
+    _render_vector_then_tables(sheet, tk, plan, vector_first=False)
+
+
+def compose_page_te1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-E1 计划时序型：时序条（无日期）+ 前置条件/资源表。"""
+    _render_vector_then_tables(sheet, tk, plan, vector_first=True)
+
+
+def compose_page_tf1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-F1 组织协同型：组织图 + 职责接口表。"""
+    _render_vector_then_tables(sheet, tk, plan, vector_first=True)
+
+
+def compose_page_tg1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-G1 检验清单型：检验表主体（通栏）+ 完整判定条件。"""
+    _render_vector_then_tables(sheet, tk, plan, vector_first=True)
+
+
+def compose_page_th1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
+    """T-H1 风险对策型：风险示意 + 对策卡（chevron）+ 措施原文表。"""
+    _render_figure_prose_table(sheet, tk, plan, right_kind="chevron")
+
+
+def compose_content_page(sheet: Sheet, tk: dict, plan: PagePlan,
+                         tables: Sequence[dict]) -> list[dict]:
+    """续页（内容页）：标题区 + 通栏表序列（表头重复）。
+
+    返回未容纳的表（含部分画出后的剩余行，caption 已加「（续）」），
+    由调用方决定继续续页或按 ≤3 页预算记溢出。
+    """
+    gap_row = float(_tk(tk, "spacing", "gap_row", 14.2))
+    margin_x = float(_tk(tk, "spacing", "margin_x", 72.0))
+    content_w = sheet.w - margin_x * 2
+    y_footer = _footer_anchor(sheet, tk)
+    x, _w, cy = _page_frame(sheet, tk, plan)
+    leftover: list[dict] = []
+    for t in tables:
+        max_h = y_footer - gap_row - cy
+        if max_h <= 60:
+            leftover.append(dict(t))
+            continue
+        used, drawn = data_table(sheet, tk, x, cy, content_w, t.get("caption", ""),
+                                 t.get("headers", []), t.get("rows", []),
+                                 t.get("col_ratios"), max_h=max_h)
+        rows = t.get("rows", [])
+        if drawn < len(rows):
+            rest = dict(t)
+            rest["rows"] = rows[drawn:]
+            rest["caption"] = str(t.get("caption", "")) + "（续）"
+            leftover.append(rest)
+        cy += used + 6.0
+    footer_skyline(sheet, tk, x, y_footer, content_w, plan.footer_note)
+    return leftover
+
+
+# ---------------------------------------------------------------- 页装配器分发
+
+_TEMPLATE_FUNCS = {
+    "T-A1": compose_page_ta1,
+    "T-B1": compose_page_tb1,
+    "T-C1": compose_page_tc1,
+    "T-D1": compose_page_td1,
+    "T-E1": compose_page_te1,
+    "T-F1": compose_page_tf1,
+    "T-G1": compose_page_tg1,
+    "T-H1": compose_page_th1,
+}
 
 
 def compose_page(sheet: Sheet, tk: dict, plan: PagePlan, template: str = "T-B1") -> None:
-    """页装配器分发；阶段 2 只实现 T-B1，阶段 3 扩展其余 7 类。"""
-    if template == "T-B1":
-        compose_page_tb1(sheet, tk, plan)
-    else:
-        raise NotImplementedError(f"template {template} 尚未实现（阶段 3+）")
+    """页装配器分发（V1.3 阶段 3：8 类模板齐备）。"""
+    tid = template or plan.template_id or "T-B1"
+    fn = _TEMPLATE_FUNCS.get(tid)
+    if fn is None:
+        raise NotImplementedError(f"template {tid} 尚未实现")
+    fn(sheet, tk, plan)

@@ -240,6 +240,11 @@ class Config:
     def ingest(self) -> dict:
         return self.raw["ingest"]
 
+    # -- layout（V1.3 阶段 3.6：新旧体系切换；legacy 保留至阶段 7 验收后移除） --
+    @property
+    def layout_engine(self) -> str:
+        return str(self.raw.get("layout", {}).get("engine", "legacy")).strip().lower()
+
 
 # ---------------------------------------------------------------- 加载
 

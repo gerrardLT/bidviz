@@ -178,6 +178,13 @@ def cmd_build(args) -> None:
     cfg = load_cfg(root)
     out = Path(args.out) if args.out else cfg.output / "施工组织设计-图册-A3.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)
+    if args.engine == "v13" or (args.engine is None and cfg.layout_engine == "v13"):
+        # 新体系（V1.3）：独立子进程跑 build_v13——import 即切 A3 竖版画布，
+        # 不得与旧体系同进程混跑（踩坑 #11）
+        print("运行 V1.3 新体系编译（page-plan → A3 竖版）…")
+        r = subprocess.run([sys.executable, str(BASE / "src" / "build_v13.py"),
+                            "--root", str(root), "--out", str(out)], cwd=BASE)
+        raise SystemExit(r.returncode)
     import build_e1 as be
     pages, regions = be.build_final(root, out)
     print(f"[OK] 已生成 {out}（{pages} 页，{round(out.stat().st_size/1024/1024, 1)} MB）")
@@ -336,6 +343,9 @@ def main() -> None:
     p = sub.add_parser("build", help="汇编 PDF + 审计")
     p.add_argument("project")
     p.add_argument("--out")
+    p.add_argument("--engine", choices=["legacy", "v13"], default=None,
+                   help="排版引擎：legacy=旧两页体系（默认）；v13=V1.3 新体系（A3 竖版 8 类模板）"
+                        "；缺省读 bidviz.toml [layout].engine")
     p.set_defaults(fn=cmd_build)
 
     p = sub.add_parser("audit", help="覆盖率审计")

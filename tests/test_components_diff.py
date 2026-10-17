@@ -43,9 +43,82 @@ def render_demo_rect(path: Path) -> None:
 
 # ---------------------------------------------------------------- 组件用例清单
 
-# 阶段 2 起在此追加真实组件：("t-b1-kpi-strip", render_kpi_strip), ...
+
+def _pdf_page_to_png(pdf_path: Path, png_path: Path, dpi: int = 100) -> None:
+    import fitz
+    doc = fitz.open(str(pdf_path))
+    pix = doc[0].get_pixmap(dpi=dpi)
+    pix.save(str(png_path))
+    doc.close()
+
+
+def _render_component(path: Path, draw_fn, page_size=(620, 340)) -> None:
+    """固定数据渲染组件 → PDF → PNG（Sheet 显式 page_size，不动 module 全局画布）。"""
+    import bidviz_templates as tpl
+    import bidviz_vector as bv
+    pdf = path.with_suffix(".pdf")
+    sheet = bv.Sheet(pdf, page_size=page_size)
+    draw_fn(sheet, tpl.load_tokens())
+    sheet.save()
+    _pdf_page_to_png(pdf, path)
+
+
+def render_process_strip(path: Path) -> None:
+    import bidviz_templates as tpl
+    def draw(sheet, tk):
+        tpl.process_strip(sheet, tk, 40, 60, 540,
+                          ["测量放线", "土方开挖", "基底清理", "分层回填", "密闭外运"])
+    _render_component(path, draw)
+
+
+def render_chevron_cards(path: Path) -> None:
+    import bidviz_templates as tpl
+    def draw(sheet, tk):
+        tpl.chevron_cards(sheet, tk, 40, 40, 540, [
+            {"title": "边坡坍塌", "body": "开挖过程随时排查边坡开裂、滑移风险，坡面坡度全程按规范要求控制。"},
+            {"title": "堆载过量", "body": "临时堆土沿沟槽边缘安全距离外有序堆放，避免挤压边坡。"},
+            {"title": "基底扰动", "body": "预留150mm厚基底土层由人工清理找平，避免机械扰动原状土。"},
+        ])
+    _render_component(path, draw)
+
+
+def render_timeline_bar(path: Path) -> None:
+    import bidviz_templates as tpl
+    def draw(sheet, tk):
+        tpl.timeline_bar(sheet, tk, 40, 70, 540, [
+            {"label": "施工准备"}, {"label": "土建施工"}, {"label": "电气安装"},
+            {"label": "调试送电"}])
+    _render_component(path, draw)
+
+
+def render_org_chart(path: Path) -> None:
+    import bidviz_templates as tpl
+    def draw(sheet, tk):
+        tpl.org_chart(sheet, tk, 40, 50, 540,
+                      ["项目经理", "项目总工", "安全员", "质检员", "施工员", "资料员"])
+    _render_component(path, draw)
+
+
+def render_data_table(path: Path) -> None:
+    import bidviz_templates as tpl
+    def draw(sheet, tk):
+        tpl.data_table(sheet, tk, 40, 40, 540, "工序与操作要求（逐字取自原文）",
+                       ["阶段 / 工序", "作业要点"],
+                       [["土方开挖", "控制开挖深度在2至3米区间内，预留150mm厚基底土层人工清理"],
+                        ["坡面防护", "挂网喷C25混凝土60厚，坡度按规范控制"],
+                        ["回填外运", "分层回填压实，多余土方密闭外运"]],
+                       [0.3, 0.7])
+    _render_component(path, draw, page_size=(620, 240))
+
+
+# 阶段 3.5 起加入矢量图型与数据表基线；新组件在此登记
 COMPONENT_CASES: list[tuple[str, callable]] = [
     ("demo-rect", render_demo_rect),
+    ("vec-process-strip", render_process_strip),
+    ("vec-chevron-cards", render_chevron_cards),
+    ("vec-timeline-bar", render_timeline_bar),
+    ("vec-org-chart", render_org_chart),
+    ("tbl-data-table", render_data_table),
 ]
 
 

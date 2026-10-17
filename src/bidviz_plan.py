@@ -661,3 +661,362 @@ def image_ratio(path: Path | None, default: float = 1.414) -> float:
         return w / h if h else default
     except Exception:
         return default
+
+
+# ================================================================ V1.3 page-plan（阶段 3.3）
+#
+# 类 → 模板 → 槽位序列 → 页；页数预算 ≤3 页/节（D4）；KPI 按类浮动（D12）；
+# 保留段规则（D3/3.3c：A/B/C 留 1–2 段关键原文，H 留条件句，D/E/F/G 全表）。
+# 生成是确定性的：同 blocks + 分类 + tokens → 同 page-plan（S003 冻结件原样保留）。
+
+PAGE_PLAN_VERSION = 3
+PAGE_PLAN_NAME = "page-plan.json"
+MAX_PAGES_PER_SECTION = 3
+
+CLASS_TEMPLATE: dict[str, str] = {
+    "A": "T-A1", "B": "T-B1", "C": "T-C1", "D": "T-D1",
+    "E": "T-E1", "F": "T-F1", "G": "T-G1", "H": "T-H1",
+}
+# D12 KPI 数量按类浮动；优先级 工期 > 工程量 > 关键型号
+KPI_CAPS: dict[str, int] = {"A": 3, "B": 3, "C": 2, "E": 2, "H": 2, "D": 0, "F": 0, "G": 0}
+
+_DURATION_RE = re.compile(r"(\d{1,4})\s*(?:个)?(日历天|工作日|天)")
+_QUANT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(km|m|米|吨|t|台|处|组|套|根|块)")
+_MODEL_RE = re.compile(r"[A-Z]{2,}[A-Za-z0-9]*[-－][A-Za-z0-9×x/－-]*|\d+×\d+(?:mm²)?")
+_RISK_WORD_RE = re.compile(r"严禁|不得|禁止|必须|应当|确保|防止|避免")
+_COND_WORD_RE = re.compile(r"当|若|一旦|严禁|不得|必须|遇")
+
+
+def _body_paragraphs(item: Any) -> list[str]:
+    out = []
+    for b in item.blocks:
+        if getattr(b, "kind", "body") == "heading":
+            continue
+        t = (b.text or "").strip()
+        if t:
+            out.append(t)
+    return out
+
+
+def extract_kpis(item: Any, main_class: str) -> list[dict]:
+    """从原文抽取 KPI 候选（D12）：工期 > 工程量 > 关键型号；逐字取自原文。
+
+    只认正文里真实出现的数值与型号串；note 携带来源句片段供反查。抽不到就返回
+    空列表——KPI 卡宁缺毋滥（不编造）。
+    """
+    cap = KPI_CAPS.get(main_class, 0)
+    if cap <= 0:
+        return []
+    text = "".join(_body_paragraphs(item))
+    out: list[dict] = []
+
+    for m in _DURATION_RE.finditer(text):
+        ctx = text[max(0, m.start() - 18):m.end() + 18]
+        if not re.search(r"工期|总工期|完成|历时|周期", ctx):
+            continue
+        out.append({"label": "工期", "value": m.group(1), "unit": m.group(2),
+                    "note": ctx.strip()[:36], "icon": "期"})
+        break      # 工期只取第一处（总工期表述）
+
+    best_q = None
+    for m in _QUANT_RE.finditer(text):
+        v = float(m.group(1))
+        unit = m.group(2)
+        if unit in ("m", "米", "km") and v < 10 and "电缆" not in text[max(0, m.start() - 10):m.start()]:
+            continue        # 太短的 m 多为间距/厚度，不算工程量
+        if best_q is None or v > float(best_q["value"]):
+            ctx = text[max(0, m.start() - 16):m.end() + 16]
+            best_q = {"label": "工程量", "value": m.group(1), "unit": unit,
+                      "note": ctx.strip()[:36], "icon": "量"}
+    if best_q:
+        out.append(best_q)
+
+    if len(out) < cap:
+        seen = set()
+        for m in _MODEL_RE.finditer(text):
+            s = m.group(0)
+            if s in seen or len(s) < 5:
+                continue
+            seen.add(s)
+            ctx = text[max(0, m.start() - 14):m.end() + 20]
+            if not re.search(r"型号|规格|电缆|采用|选用", ctx):
+                continue
+            out.append({"label": "关键型号", "value": s[:18], "unit": "",
+                        "note": ctx.strip()[:36], "icon": "型"})
+            break
+    return out[:cap]
+
+
+def select_prose(item: Any, kpis: list[dict], main_class: str) -> list[dict]:
+    """D3/3.3c 保留段：A/B/C 留 ≤2 段（KPI 来源段与风险/条件句段优先）；H 留条件句；
+    D/E/F/G 不留（表格承载），其余段落进提炼表（curate_tables，逐字原文）。"""
+    paras = _body_paragraphs(item)
+    if main_class in ("D", "E", "F", "G"):
+        return []
+    kpi_vals = [k["value"] for k in kpis if k["value"]]
+
+    def score(p: str) -> int:
+        s = 0
+        if any(v in p for v in kpi_vals):
+            s += 2
+        if _RISK_WORD_RE.search(p):
+            s += 1
+        return s
+
+    if main_class == "H":
+        picked = [p for p in paras if _COND_WORD_RE.search(p)][:2]
+    else:
+        ranked = sorted(range(len(paras)), key=lambda i: (-score(paras[i]), i))
+        picked = [paras[i] for i in ranked if score(paras[i]) > 0][:2]
+    return [{"kind": "body", "text": p} for p in picked]
+
+
+def vector_data(item: Any, main_class: str) -> dict | None:
+    """E/F/H 的矢量图型数据（3.5）：全部逐字取自原文（三级标题/岗位句/风险句）。"""
+    import bidviz_e1 as e1
+    if main_class == "E":
+        topics = [b.text for b in item.blocks
+                  if getattr(b, "kind", "") == "heading" and re.match(r"^[一二三四五六七八九十]+、", b.text)]
+        if not topics:
+            return None
+        return {"kind": "timeline_bar",
+                "phases": [{"label": t[:14]} for t in topics[:6]]}
+    if main_class == "F":
+        text = "".join(_body_paragraphs(item))
+        posts, seen = [], set()
+        for m in re.finditer(r"项目经理|项目总工|技术负责人|安全员|质检员|施工员|资料员|材料员|班组长|专职安全员", text):
+            if m.group(0) not in seen:
+                seen.add(m.group(0))
+                posts.append(m.group(0))
+        if not posts:
+            return None
+        return {"kind": "org_chart", "nodes": posts[:8]}
+    if main_class == "H":
+        risks = []
+        rt = _norm("".join(_body_paragraphs(item)))
+        for s in e1.extract_risks(item):
+            if _norm(s)[:10] in rt:
+                risks.append(s)
+        if not risks:
+            return None
+        return {"kind": "chevron_cards",
+                "cards": [{"title": s[:10], "body": s[:80]} for s in risks[:4]]}
+    return None
+
+
+# ---------------------------------------------------------------- 高度估算（确定性）
+
+
+def _tokens_for_measure() -> dict:
+    import bidviz_templates as tpl
+    import bidviz_vector as bv
+    bv.register_fonts()          # 高度估算用 wrap 实测字宽，先注册字体
+    return tpl.load_tokens()
+
+
+def _table_measure(tk: dict, w: float, headers: list[str], rows: list[list[str]],
+                   col_ratios: list[float]) -> float:
+    """通用表高度估算（与 Sheet.table 同口径：行高=实测折行数×行距+padding）。"""
+    from bidviz_vector import wrap as _wrap
+    size = 9.0
+    lead = 13.2
+    pad = 5.0
+    col_w = [w * r for r in col_ratios] if col_ratios else [w / max(1, len(headers))] * max(1, len(headers))
+    h = size * 1.6 + pad * 2
+    for row in rows:
+        lines = 1
+        for i, cell in enumerate(row):
+            cw = col_w[i] - pad * 2 if i < len(col_w) else w - pad * 2
+            lines = max(lines, len(_wrap(str(cell), size, cw)))
+        h += max(lead * lines + pad * 2, size * 1.45 + pad * 2)
+    return h
+
+
+def _estimate_page_budget(tk: dict, main_class: str, kpis: list[dict],
+                          tables: list[tuple], prose: list[dict],
+                          has_figure: bool, has_vector: bool) -> tuple[int, list[dict]]:
+    """页数预算：1 页起步，表溢出续页（同模板内容页），>3 记溢出（D4 溢出链终点）。"""
+    PAGE_W, PAGE_H = 841.89, 1190.55     # A3 竖版
+    mx = float(tk.get("spacing", {}).get("margin_x", 72.0))
+    mt = float(tk.get("spacing", {}).get("margin_top", 82.0))
+    mb = float(tk.get("spacing", {}).get("margin_bottom", 62.0))
+    gap = float(tk.get("spacing", {}).get("gap_row", 14.2))
+    content_w = PAGE_W - mx * 2
+
+    fixed = 34.0 + gap                       # 标题区
+    if kpis:
+        fixed += 50.0 + gap                  # KPI 条
+    if has_figure:
+        fixed += 330.0 + gap                 # 图位（主视觉区估算）
+    if has_vector:
+        fixed += 150.0 + gap
+    if prose:
+        fixed += min(len(prose), 2) * 90.0   # 保留段估算（每段约 5–6 行）
+
+    pages = 1
+    used = fixed
+    overflow: list[dict] = []
+    for cap, headers, rows, ratios in tables:
+        th = _table_measure(tk, content_w, headers, rows, ratios) + 26.0
+        if used + th > (PAGE_H - mt - mb) and used > fixed:
+            pages += 1
+            used = 34.0 + gap + th           # 续页：标题区 + 表
+        else:
+            used += th
+        while pages <= MAX_PAGES_PER_SECTION and used > (PAGE_H - mt - mb):
+            pages += 1
+            used = 34.0 + gap + (used - (PAGE_H - mt - mb))
+    if pages > MAX_PAGES_PER_SECTION:
+        overflow.append({
+            "reason": "表内容超出 3 页预算", "suggested": "S2 门控语义拆分（content_blocks 逐块成页）",
+            "tables": [t[0] for t in tables],
+        })
+        pages = MAX_PAGES_PER_SECTION
+    return pages, overflow
+
+
+# ---------------------------------------------------------------- 主入口
+
+
+def page_plan_path(root: Path) -> Path:
+    return Path(root) / "work" / PAGE_PLAN_NAME
+
+
+def load_page_plan(root: Path) -> dict | None:
+    p = page_plan_path(root)
+    if not p.exists():
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) and data.get("sections") else None
+
+
+def build_page_plan(root: Path, only: Sequence[str] | None = None,
+                    keep_frozen: bool = True) -> dict:
+    """按分类生成全册 page-plan；S003（签认点②冻结件）原样保留。"""
+    import bidviz_classify as classify
+    import bidviz_e1 as e1
+    import build_e1 as be
+    root = Path(root)
+    cls = classify.load(root)
+    if not cls:
+        raise SystemExit("缺少 work/layout-classification.json：先运行 python -m bidviz_classify <root>")
+    cls_by_sid = {s["section_id"]: s for s in cls["sections"]}
+
+    old = load_page_plan(root) or {}
+    frozen_ids: set[str] = set()
+    if keep_frozen:
+        fz = root / "work" / "frozen.json"
+        if fz.exists():
+            try:
+                frozen_ids = {"S003"}     # 签认点②：golden page 唯一冻结节
+            except Exception:
+                frozen_ids = set()
+
+    sections, _pm = be.load_project(root)
+    e1_sections = e1.group_sections(sections)
+    be.apply_edits(root, e1_sections)
+    tk = _tokens_for_measure()
+
+    out: dict[str, Any] = {}
+    wanted = {s.strip().upper() for s in only} if only else None
+    for sec in e1_sections:
+        sid = sec.section_id
+        if wanted and sid.upper() not in wanted:
+            if sid in (old.get("sections") or {}):
+                out[sid] = old["sections"][sid]
+            continue
+        if sid in frozen_ids and sid in (old.get("sections") or {}):
+            out[sid] = old["sections"][sid]        # 冻结件逐字节保留
+            continue
+        meta = cls_by_sid.get(sid)
+        # 无分类条目的节（如封面及总述）：fallback A 类总览（不进分类决策件，
+        # layout-classification.json 仍保持 57 真节口径；此 fallback 只影响 page-plan）
+        main = (meta or {}).get("main_class") or "A"
+        item = sec.as_visual_item()
+        entry = _plan_one_section(root, sec, item, main, meta, tk)
+        if entry:
+            out[sid] = entry
+
+    plan = {
+        "version": PAGE_PLAN_VERSION,
+        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "engine": "v13-page-plan",
+        "note": "V1.3 阶段 3.3 生成：类→模板→槽位；≤3 页/节；KPI 按类浮动（D12）；"
+                "保留段规则（D3）。S003 为签认点②冻结件，生成器不触碰。",
+        "sections": out,
+    }
+    p = page_plan_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    return plan
+
+
+def _plan_one_section(root: Path, sec: Any, item: Any, main: str,
+                      meta: dict | None, tk: dict) -> dict | None:
+    sid = sec.section_id
+    chapter = (sec.chapter or "").split(" / ")[0]
+    kpis = extract_kpis(item, main)
+    prose = select_prose(item, kpis, main)
+    vec = vector_data(item, main)
+    tables = curate_tables(item)        # (题注, 表头, 行, 列宽比例)——逐字原文
+
+    figs = section_figures(root, sid, item)
+    imgs = resolve_images(root, sid, figs)
+    img = imgs.get(1)
+    callouts: list[dict] = []
+    text_spec: list[str] = []
+    if img is not None and main in ("A", "B", "C", "H"):
+        objs = None
+        try:
+            import bidviz_e1 as e1
+            objs = e1.key_objects(item, limit=4)
+        except Exception:
+            objs = []
+        anchors = [(0.32, 0.16), (0.68, 0.24), (0.36, 0.62), (0.66, 0.74)]
+        for i, name in enumerate(objs[:4]):
+            callouts.append({"no": str(i + 1), "text": name[:12],
+                             "anchor": list(anchors[i])})
+            text_spec.append(name[:12])
+
+    has_figure = img is not None and main in ("A", "B", "C", "H")
+    pages_est, overflow = _estimate_page_budget(
+        tk, main, kpis, tables, prose, has_figure, vec is not None)
+
+    page1 = {
+        "template_id": CLASS_TEMPLATE[main],
+        "page_no": 1,
+        "total_pages": pages_est,
+        "title": {"chapter": chapter, "section": sec.title},
+        "main_class": main,
+        "aux_classes": (meta or {}).get("aux_classes", []),
+        "kpis": kpis,
+        "figure": ({
+            "image": str(img.resolve().relative_to(root.resolve())).replace("\\", "/") if img else None,
+            "fit": "contain", "crop_top": 0.0, "cover_anchor": [0.5, 0.5],
+            "caption": (figs[0].get("name") if figs else "") or f"{sec.title} 示意",
+            "callouts": callouts, "text_spec": text_spec,
+        } if has_figure else None),
+        "vector": vec,
+        "prose": prose,
+        "tables": [{"caption": cap, "headers": heads, "rows": rows, "col_ratios": ratios}
+                   for cap, heads, rows, ratios in tables],
+        "footer_note": _cfg().header_text,
+        "overflow": overflow,
+        "split_hint": (meta or {}).get("content_blocks", []),
+    }
+    return {"title": sec.title, "main_class": main,
+            "pages": [page1], "page_budget": pages_est}
+
+
+def page_plan_summary(plan: dict) -> dict:
+    from collections import Counter
+    secs = plan.get("sections", {})
+    tpl = Counter(p.get("template_id") for v in secs.values() for p in v.get("pages", []))
+    budgets = Counter((v.get("page_budget") or len(v.get("pages", [])) or 1) for v in secs.values())
+    overflow = [sid for sid, v in secs.items() if any(p.get("overflow") for p in v.get("pages", []))]
+    return {"sections": len(secs), "pages": sum(b * n for b, n in budgets.items()),
+            "by_template": dict(tpl), "page_budgets": {str(k): v for k, v in sorted(budgets.items())},
+            "overflow_sections": overflow}
