@@ -35,9 +35,19 @@ sys.path.insert(0, str(BASE / "src"))
 PROMPT_TEMPLATE = BASE / "prompts" / "fullpage.md"
 OUT_DIR_NAME = "work/fullimage"
 LEDGER_NAME = "ledger.json"
-SIZE_CHAIN = ["2048x2896", "1536x2170", "1024x1536"]
 SPLIT_CHARS = 1500          # 超过则分页（1225 字的 S003 单页效果已验证）
 MAX_PAGES = 3               # D4：每节 ≤3 页
+
+
+def size_chain() -> list[str]:
+    """尺寸回退链：首选 bidviz.toml [image].size（如 4096x2896 走 taomu 4K），兜底降档。"""
+    from bidviz_config import get as _cfg
+    first = _cfg().image_size
+    chain = [first] if first else []
+    for s in ("2048x2896", "1536x2170", "1024x1536"):
+        if s not in chain:
+            chain.append(s)
+    return chain
 
 # 8 类图片语汇（D8 / layout-classification），注入「图片采用…」一句
 CLASS_IMAGERY: dict[str, str] = {
@@ -193,7 +203,7 @@ def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
     last_err = ""
     # 外层：供应商限流（503 tokens pool）退避重试；内层：尺寸回退链
     for attempt in range(1, 4):
-        for size in SIZE_CHAIN:
+        for size in size_chain():
             try:
                 api.generate(built["prompt"], out, recorder=rec, size=size)
                 from PIL import Image
