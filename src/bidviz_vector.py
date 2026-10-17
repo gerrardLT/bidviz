@@ -195,6 +195,23 @@ class Sheet:
         self.c.setLineWidth(lw)
         self.c.line(x1, self._y(y1), x2, self._y(y2))
 
+    def polygon(self, pts: Sequence[tuple[float, float]], fill: str | None = None,
+                stroke: str | None = None, lw: float = 0.6) -> None:
+        """画多边形（左上原点坐标）；斜切装饰块、天际线剪影用。"""
+        if len(pts) < 3:
+            return
+        p = self.c.beginPath()
+        p.moveTo(pts[0][0], self._y(pts[0][1]))
+        for x, y in pts[1:]:
+            p.lineTo(x, self._y(y))
+        p.close()
+        if fill:
+            self.c.setFillColor(fill)
+        if stroke:
+            self.c.setStrokeColor(stroke)
+            self.c.setLineWidth(lw)
+        self.c.drawPath(p, stroke=1 if stroke else 0, fill=1 if fill else 0)
+
     def text(self, x: float, y: float, s: str, size: float = 9.5, bold: bool = False,
              color: str = "#1a2c38", align: str = "left", max_w: float | None = None) -> None:
         if max_w is not None:

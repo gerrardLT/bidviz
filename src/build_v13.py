@@ -117,6 +117,9 @@ def _count_pages(root: Path, out_pdf: Path, pp: dict, sids: list[str], tk: dict)
         tpl.compose_page(sheet, tk, plan1, template=page1.get("template_id", "T-B1"))
         sheet.c.showPage()
         rest = _remaining_tables(page1, tk, sheet.w)
+        remainder = getattr(plan1, "_tb1_remainder", None)
+        if remainder:
+            rest = [remainder] + rest
         page_no = 1
         while rest and page_no < MAX_PAGES:
             page_no += 1
@@ -154,6 +157,10 @@ def _render(root: Path, out_pdf: Path, pp: dict, sids: list[str], tk: dict,
 
         # ---- 续页：剩余表按 ≤3 页预算 ----
         rest = _remaining_tables(page1, tk, sheet.w)
+        # T-B1 v2 首页通用表被 max_h 截断的剩余行插到队首（踩坑 #15 防页外丢失）
+        remainder = getattr(plan1, "_tb1_remainder", None)
+        if remainder:
+            rest = [remainder] + rest
         # 首页模板未含 tables 字段的老条目（如冻结 S003 的 icon_table）无续页
         page_no = 1
         while rest and page_no < MAX_PAGES:

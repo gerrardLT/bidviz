@@ -1,31 +1,38 @@
 # bidviz V1.3 Visual Tokens（Toml for stdlib only）
-# 签认版本：v1.0 —— 已签（签认点①，2026-10-16 随阶段 2 样板页签认一并确认；
-# 哈希与签认记录见 projects/anke-35kv/work/frozen.json）。改本文件必须回签认点①重签。
-# 
-# 说明：使用报告级调色板 + 字号阶梯 + 间隙阶梯 + 组件规格，
-# 供 bidviz_templates.py 统一引用；所有颜色值必须与样图颜色量测一致。
+# 签认版本：v1.1 —— **待重签认（签认点①）**。
+# v1.0（2026-10-16 随阶段 2 样板页签认）→ v1.1 校准来源：样图程序化量测 + 视觉解析
+#   （2026-10-17 T-B1 v2 复刻迭代）：
+#   - margin_x 72→40（样图左右边距 ≈4.5% 页宽 = 297mm×0.045 ≈ 40pt）
+#   - margin_top/bottom 82/62→56/56（样图页眉/页脚各 ≈5% 页高）
+#   - header_bg/accent_blue #1f4e79→#004890（样图主蓝量化色 #004890）
+#   - 新增 chapter_title/section_title 层级与 KPI 圆图标、页码样式键
+# 改本文件必须回签认点①重签；签认记录见 projects/anke-35kv/work/frozen.json。
 
 [palette]
-# 主色板（工程蓝 + 警示红 + 黑白灰中性）——来自样式配置映射
-header_bg = "#1f4e79"          # 深蓝表头（原 TABLE_ACCENT）
+# 主色板（工程蓝 + 警示红 + 黑白灰中性）——v1.1 按样图量测校准
+header_bg = "#004890"          # 深蓝表头/主蓝（样图量化主色）
 header_text = "#ffffff"        # 白字
 text_main = "#1a2c38"          # 深灰正文
 muted = "#5a6e7c"              # 灰色提示
 border = "#c1d0d9"             # 浅灰分隔线
-accent_blue = "#1f4e79"        # 强调蓝（用于页眉、题注）
+accent_blue = "#004890"        # 强调蓝（标题/题注/标注片）
 warn_red = "#c0392b"           # 警示红（预留）
 row_alt_light = "#f8fbfd"      # 浅灰行底纹
+skyline_blue = "#dbe7f1"       # 页脚天际线剪影（浅蓝）
 
 [typography]
 # 字号阶梯（A3 打印舒适区）
-title_h1 = 15.0                # 章标题
-title_h2 = 13.0                # 节标题  
+title_h1 = 15.0                # （旧键，兼容）章标题
+title_h2 = 13.0                # （旧键，兼容）节标题
+chapter_title = 16.0           # 章大标题（v1.1：样图层级一）
+section_title = 13.5           # 节标题（v1.1：样图层级二）
+sub_section = 11.0             # 二级/小节标题（v1.1：齿轮圆图标题行）
 table_header = 9.5             # 表格表头加粗
 normal = 9.5                   # 正文默认
 small = 8.4                    # 报表单元格小字
 caption = 9.5                  # 图注/表题
 footer = 7.5                   # 页脚
-page_no = 7.5                  # 页码
+page_no = 9.0                  # 页脚页码「— N —」（v1.1 从页头移到页脚）
 
 [line_spacing]
 leading_body = 13.8            # 正文行高 (≈ normal*1.45)
@@ -33,27 +40,32 @@ leading_table = 13.2           # 表格行高 (≈ small*1.5)
 leading_caption = 11.5         # 图注行高
 
 [spacing]
-# 间隙阶梯（pt）
-margin_x = 72.0                # 左右边距 ≈ 25.4mm×2.8346
-margin_top = 82.0              # 上边距（含页眉占位）
-margin_bottom = 62.0           # 下边距（含页脚占位）
+# 间隙阶梯（pt）——v1.1 按样图边距量测校准（原 72/82/62）
+margin_x = 40.0                # 左右边距 ≈ 样图 4.5% 页宽
+margin_top = 56.0              # 上边距（页眉细线夹层起点）
+margin_bottom = 56.0           # 下边距（页脚线/天际线）
 gap_col = 22.6                 # 双栏间距 ≈ 8mm
 gap_row = 14.2                 # 表格行间距
 gap_kpi_card = 16.0            # KPI 卡间距
 gap_callout = 8.0              # 编号白片间距
+gap_para = 9.0                 # 正文段间距（v1.1：样图段间距明显）
 
 [components]
 # KPI 卡尺寸（单位 pt）
 kpi_w = 180.0                  # KPI 卡宽（三个等分时每卡宽度）
 kpi_h = 50.0                   # KPI 卡高
-callout_w = 24.0               # 编号白片宽
-callout_h = 14.0               # 编号白片高
+kpi_icon_r = 14.0              # KPI 圆图标半径（v1.1：样图左圆环图标）
+kpi_value_size = 17.0          # KPI 大数字字号（v1.1）
+callout_w = 24.0               # 编号圆片直径（v1.1：深蓝圆片白字）
+callout_h = 14.0
 chevron_w = 220.0              # chevron 卡片宽
 chevron_h = 60.0               # chevron 卡片高
 icon_cell_w = 30.0             # 图标列表格中图标列宽
+header_skew_w = 5.0            # 标题斜切块宽（v1.1）
+skyline_h = 16.0               # 页脚天际线剪影高（v1.1）
 
 [gate]
-# 乱度门禁阈值（按样图风标定）
+# 乱度门禁阈值（按样图风标定；v1.1 版心加宽后须复标定——见 audit-layout 报告）
 max_fill_blocks_per_page = 35  # 填充色块数上限
 max_color_variety = 5          # 不同填充色种数上限
 # 左边界带数上限（x0 经 ±3pt 聚类后计数）。

@@ -20,6 +20,14 @@
 冻结签认账本（sha256）：`projects/anke-35kv/work/frozen.json`。
 **改 tokens.toml 必须回到签认点①重签；改 page-plan 的 S003 页必须比对 frozen.json 哈希。**
 
+> **进行中（2026-10-17）：签认点①② 重签认迭代（T-B1 v2 样图同构）。**
+> 用户比对样板图后要求精准复刻 → 已产出 tokens **v1.1**（margin 72→40、主蓝 #1f4e79→#004890、
+> 新增 chapter_title/kpi_icon_r/skyline 等键——来源=样图程序化量测+视觉解析）+ **T-B1 v2**
+> （页眉线夹层/章大标题渐变线/节标题条/圆环 KPI 卡/深蓝圆片标注+图签/表题行/天际线页脚）。
+> S003 重渲染 contact sheet 相似度 ~90%（剩余差距=AI 主图画风，属阶段 4 风格种子）。
+> v2 golden 像素哈希：`6e1f29e5…`（dpi100）。整册 114 页 / 乱度 0 超标 / 覆盖率 100% 复验通过。
+> **frozen.json 仍是 v1.0/v1 哈希——待用户签认 contact sheet 后更新（①② 重签）。**
+
 ## 1. 新会话启动顺序（必读文件）
 
 1. `docs/PROGRESS.md`（本文件）—— 状态与下一步
@@ -87,9 +95,10 @@ cd d:\project\bidviz
 10. **py-modules 约定**：新增 src/*.py 必须同步 `pyproject.toml` py-modules，否则安装态 import 失败。
 11. **同进程禁混新旧画布**：`build_e1` 在 import 时快照 `bv.PAGE_W/PAGE_H`（模块级）。若同进程先调 `bv.set_page('A3','portrait')`（如 render_s003）再 import/build 旧体系，旧体系会拿到竖版快照而错乱。样板渲染与旧体系 build 必须分进程跑；测试里 set_page 后必须 finally 还原 landscape。
 12. **gitignore 白名单顺序**：gitignore 最后匹配获胜。`projects/*/work|output/*` 忽略后，决策件/golden 产物白名单的 `!` 规则必须放在 `_*.png`/`_*.pdf` 之后才生效；新增白名单条目时注意位置（2026-10-16 曾因此漏入库）。
-13. **T-B1 双表通道**：阶段 2 的 T-B1 只画 `icon_table_*` 字段；阶段 3 起 page-plan 的表走 `tables` 字段。`compose_page_tb1` 已加 elif 回退（无 icon_table 时画 tables[0]），否则 13 个 T-B1 节首页第一张表整表丢失（2026-10-17 整册覆盖率 94.8%→100% 的根因）。
+13. **T-B1 双表通道**：阶段 2 的 T-B1 只画 `icon_table_*` 字段；阶段 3 起 page-plan 的表走 `tables` 字段。`compose_page_tb1` 必须保留 elif 回退（无 icon_table 时画 tables[0]），否则 13 个 T-B1 节首页第一张表整表丢失（2026-10-17 两次复发：整册覆盖率 94.8%→100% 的根因）。
 14. **估算与实画同口径**：`data_table_height`（page-plan 预算）与 `Sheet.table`（渲染）必须同字号/行距/列宽算法；改任一侧须同步另一侧，否则预算页数与实际页数漂移。
-15. **fitz get_text 只取页内**：画到 mediabox 外的文本（表溢出页底继续画）不会被 get_text 提取——覆盖率审计前先确保渲染器用 max_h 截断，不要依赖"画了就在"。
+15. **fitz get_text 只取页内**：画到 mediabox 外的文本（表溢出页底继续画）不会被 get_text 提取——渲染器必须用 max_h 截断并把剩余行转续页（T-B1 v2 的 `_tb1_remainder` 机制），不要依赖"画了就在"。
+16. **模板重构先跑覆盖率**：改 compose 函数后必须立刻 `python src/build_v13.py` 看 v13 覆盖率是否仍 100%——v2 重构曾两次静默丢内容（#13 elif 丢失、#15 表画到页脚外），门禁和乱度审计都不查内容缺失，只有覆盖率查。
 
 ## 6. 给新会话的首条提示词模板
 

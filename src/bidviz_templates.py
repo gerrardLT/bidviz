@@ -133,47 +133,42 @@ def kpi_strip(sheet: Sheet, tk: dict, x: float, y: float, w: float,
               kpis: Sequence[KPI]) -> float:
     """KPI 三区（或 1–2 区，D12 按类浮动）；返回占用高度。
 
-    视觉：每卡白底 + 深蓝左边条 + 大数字 + 小标签；卡间 gap_kpi_card。
+    v1.1 样图样式：圆角白卡 + 细蓝边 + 左圆环图标（CJK 单字）+ 超大数字。
     """
     if not kpis:
         return 0.0
     gap = float(_tk(tk, "spacing", "gap_kpi_card", 16.0))
     kpi_h = float(_tk(tk, "components", "kpi_h", 50.0))
+    icon_r = float(_tk(tk, "components", "kpi_icon_r", 14.0))
+    val_size = float(_tk(tk, "components", "kpi_value_size", 17.0))
     accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
     text_main = _tk(tk, "palette", "text_main", "#1a2c38")
     muted = _tk(tk, "palette", "muted", "#5a6e7c")
     border = _tk(tk, "palette", "border", "#c1d0d9")
-    size_h1 = float(_tk(tk, "typography", "title_h1", 15.0))
     size_small = float(_tk(tk, "typography", "small", 8.4))
 
     n = len(kpis)
     card_w = (w - gap * (n - 1)) / n
     for i, k in enumerate(kpis):
         cx = x + i * (card_w + gap)
-        # 卡底
-        sheet.rect(cx, y, card_w, kpi_h, fill="white", stroke=border, lw=0.6)
-        # 左边条（强调色）
-        sheet.rect(cx, y, 4.0, kpi_h, fill=accent)
-        # 可选图标（左侧圆形区）
-        text_x = cx + 14
+        # 圆角白卡 + 细蓝边（样图样式）
+        sheet.rect(cx, y, card_w, kpi_h, fill="white", stroke=accent, lw=0.9, radius=6.0)
+        # 左圆环图标 + CJK 单字（字体不含线条图标，用单字近似——踩坑 #8）
+        icon_cx = cx + icon_r + 10
+        icon_cy = y + kpi_h / 2
         if k.icon:
-            icon_cx = cx + 24
-            icon_cy = y + kpi_h / 2
-            sheet.rect(icon_cx - 11, icon_cy - 11, 22, 22, fill=None,
-                       stroke=accent, lw=1.0, radius=11)
-            sheet.text(icon_cx, icon_cy - 7, k.icon, 11, True, accent, align="center")
-            text_x = cx + 42
+            sheet.rect(icon_cx - icon_r, icon_cy - icon_r, icon_r * 2, icon_r * 2,
+                       fill=None, stroke=accent, lw=1.3, radius=icon_r)
+            sheet.text(icon_cx, icon_cy - 7.5, k.icon, 11.5, True, accent, align="center")
+        text_x = icon_cx + icon_r + 10
+        inner_w = card_w - (text_x - cx) - 10
         # 大数值 + 单位
         val_str = f"{k.value}{k.unit}" if k.unit else k.value
-        sheet.text(text_x, y + 8, val_str, size_h1 + 4, True, text_main,
-                   max_w=card_w - (text_x - cx) - 10)
-        # 标签
-        sheet.text(text_x, y + 28, k.label, size_small, False, muted,
-                   max_w=card_w - (text_x - cx) - 10)
-        # 附注（可选）
+        sheet.text(text_x, y + 7, val_str, val_size, True, text_main, max_w=inner_w)
+        # 标签 / 附注
+        sheet.text(text_x, y + 30, k.label, size_small, False, muted, max_w=inner_w)
         if k.note:
-            sheet.text(text_x, y + 40, k.note, size_small - 0.5, False, muted,
-                       max_w=card_w - (text_x - cx) - 10)
+            sheet.text(text_x, y + 40, k.note, size_small - 0.7, False, muted, max_w=inner_w)
     return kpi_h
 
 
@@ -188,14 +183,14 @@ def figure_with_callouts(sheet: Sheet, tk: dict, x: float, y: float, w: float, h
     """
     border = _tk(tk, "palette", "border", "#c1d0d9")
     muted = _tk(tk, "palette", "muted", "#5a6e7c")
-    accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
+    accent = _tk(tk, "palette", "accent_blue", "#004890")
     text_main = _tk(tk, "palette", "text_main", "#1a2c38")
     size_cap = float(_tk(tk, "typography", "caption", 9.5))
     callout_w = float(_tk(tk, "components", "callout_w", 24.0))
     callout_h = float(_tk(tk, "components", "callout_h", 14.0))
 
-    # 图注占底部一行
-    caption_h = size_cap * 1.6 if slot.caption else 0.0
+    # v1.1：图签移入图内左上（白标签），不再预留图区底部图注行
+    caption_h = 0.0
     img_h = h - caption_h
     img_w = w
 
@@ -217,6 +212,14 @@ def figure_with_callouts(sheet: Sheet, tk: dict, x: float, y: float, w: float, h
                 oy = y   # 顶对齐（不垂直居中，避免图悬浮页中）
         except Exception:
             ox, oy, dw, dh = x, y, img_w, img_h
+        # 图签（v1.1 样图样式）：图内左上白色圆角小标签
+        if slot.caption:
+            cap_size = 8.2
+            cap_w = text_width(slot.caption, cap_size) + 16
+            sheet.rect(ox + 8, oy + 8, min(cap_w, dw - 16), cap_size * 1.9,
+                       fill="white", stroke=accent, lw=0.6, radius=2.5)
+            sheet.text(ox + 16, oy + 8 + 3, slot.caption, cap_size, True, accent,
+                       max_w=min(cap_w, dw - 16) - 12)
     else:
         # 占位框
         sheet.rect(x, y, img_w, img_h, fill="#f4f7f9", stroke=border, lw=0.8)
@@ -226,56 +229,55 @@ def figure_with_callouts(sheet: Sheet, tk: dict, x: float, y: float, w: float, h
                    f"（{img_w:.0f}×{img_h:.0f}pt 预留）", 8, False, muted, align="center")
         ox, oy, dw, dh = x, y, img_w, img_h
 
-    # 编号叠标（矢量白片：编号 + 文字同片，保证图上可读）
+    # 编号叠标（v1.1 样图样式）：深蓝圆片白字编号 + 深蓝圆角标签白字 + 锚点圆点引线
     for c in slot.callouts:
         ax = ox + dw * c.anchor[0]
         ay = oy + dh * c.anchor[1]
-        label_size = 8.0
-        text_w = text_width(c.text, label_size) if c.text else 0.0
-        plate_w = callout_w + (text_w + 8 if c.text else 0)
-        # 白片（编号区 + 文字区）
-        sheet.rect(ax - callout_w / 2, ay - callout_h / 2, plate_w, callout_h,
-                   fill="white", stroke=accent, lw=0.8, radius=2.0)
-        # 编号（居中于编号区）
-        sheet.text(ax, ay - callout_h / 2 + 2, c.no, 8.5, True, accent,
-                   align="center", max_w=callout_w - 2)
-        # 文字（片内右侧）
+        r = callout_w / 2
+        # 锚点小圆点 + 短引线（圆片在锚点右上方，标签随其右）
+        sheet.rect(ax - 1.3, ay - 1.3, 2.6, 2.6, fill=accent)
+        sheet.line(ax, ay, ax + 6, ay - 6, accent, 0.7)
+        # 深蓝圆片（白字编号）
+        ccx, ccy = ax + 6 + r, ay - 6 - r
+        sheet.rect(ccx - r, ccy - r, callout_w, callout_w,
+                   fill=accent, stroke=None, radius=r)
+        sheet.text(ccx, ccy - 4, c.no, 8.5, True, "white", align="center")
+        # 深蓝圆角标签（白字）
         if c.text:
-            sheet.text(ax + callout_w / 2 + 4, ay - callout_h / 2 + 2.5, c.text,
-                       label_size, False, text_main, max_w=text_w + 4)
-        # 锚点引线（白片中心到锚点的小圆点）
-        sheet.rect(ax - 1.2, ay - 1.2, 2.4, 2.4, fill=accent)
-
-    # 图注
-    if slot.caption:
-        sheet.text(x + img_w / 2, y + img_h + 4, slot.caption, size_cap, False,
-                   text_main, align="center", max_w=img_w)
+            label_size = 7.8
+            tw = text_width(c.text, label_size) + 12
+            sheet.rect(ccx + r + 3, ccy - callout_h / 2, tw, callout_h,
+                       fill=accent, stroke=None, radius=2.5)
+            sheet.text(ccx + r + 9, ccy - callout_h / 2 + 3.5, c.text,
+                       label_size, False, "white", max_w=tw - 6)
 
     # 隐藏检索层（D10）：text_spec 逐条写入，使纯视觉页可 Ctrl+F
+    # （v1.1：排在图区顶部图签下方，远离表区；render mode 3 不可见）
     if slot.text_spec:
-        hy = y + img_h + caption_h + 4
+        hy = y + 34
         for ts in slot.text_spec:
             sheet.hidden_text(x + 4, hy, ts, size_cap)
             hy += size_cap * 1.4
 
 
 def prose_column(sheet: Sheet, tk: dict, x: float, y: float, w: float,
-                 blocks: Sequence[ProseBlock], max_h: float) -> float:
+                 blocks: Sequence[ProseBlock], max_h: float,
+                 para_gap: float | None = None) -> float:
     """右 45% 正文流：按 D3 保留 1–2 段关键原文；返回占用高度。
 
     - heading：深蓝加粗，段前留白。
-    - body：正文色，行高 leading_body。
+    - body：正文色，行高 leading_body，段间距 para_gap（v1.1 样图段距）。
     - quote：左竖线 + 灰底（预留，阶段 3 用）。
     """
     if not blocks:
         return 0.0
     text_main = _tk(tk, "palette", "text_main", "#1a2c38")
-    accent = _tk(tk, "palette", "accent_blue", "#1f4e79")
-    muted = _tk(tk, "palette", "muted", "#5a6e7c")
+    accent = _tk(tk, "palette", "accent_blue", "#004890")
     border = _tk(tk, "palette", "border", "#c1d0d9")
     size_normal = float(_tk(tk, "typography", "normal", 9.5))
     size_h2 = float(_tk(tk, "typography", "title_h2", 13.0))
     leading_body = float(_tk(tk, "line_spacing", "leading_body", 13.8))
+    gap = para_gap if para_gap is not None else 4.0
 
     cy = y
     used = 0.0
@@ -322,8 +324,8 @@ def prose_column(sheet: Sheet, tk: dict, x: float, y: float, w: float,
                 else:
                     sheet.text(x, ty, ln, size_normal, False, text_main)
                 ty += leading_body
-            cy += ph + 4
-            used += ph + 4
+            cy += ph + gap
+            used += ph + gap
     return used
 
 
@@ -360,8 +362,8 @@ def icon_table(sheet: Sheet, tk: dict, x: float, y: float, w: float,
         col_w = [icon_cell_w, first_data_w] + [rest] * (n_data - 1)
     n_cols = len(col_w)
 
-    # 表头（图标列留空）
-    hh = size_th * 1.6 + pad * 2
+    # 表头（图标列留空；v1.1 行高加大对齐样图）
+    hh = size_th * 1.9 + pad * 2
     sheet.rect(x, y, w, hh, fill=header_bg)
     cx = x + icon_cell_w
     for i, hd in enumerate(headers):
@@ -380,7 +382,7 @@ def icon_table(sheet: Sheet, tk: dict, x: float, y: float, w: float,
             cell = row[i + 1] if i + 1 < len(row) else ""
             cw = col_w[i + 1] - pad * 2
             lines = max(lines, len(wrap(str(cell), size_small, cw)))
-        rh = max(leading_table * lines + pad * 2, size_small * 1.45 + pad * 2)
+        rh = max(leading_table * lines + pad * 2.8, size_small * 1.45 + pad * 2.8)
         if max_h is not None and used + rh > max_h:
             break
         bg = "white" if r_idx % 2 == 0 else row_alt
@@ -764,62 +766,205 @@ def compose_page_ta1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
     _render_figure_prose_table(sheet, tk, plan)
 
 
+# ---------------------------------------------------------------- T-B1 v2（样图同构版式，v1.1）
+
+
+def page_header_lines(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                      left_text: str, right_text: str) -> float:
+    """页眉（样图样式）：白底细线夹层，左章名深蓝、右标语灰 + 三斜线装饰。
+
+    返回占用高度（夹层含下底线，约 26pt）。
+    """
+    accent = _tk(tk, "palette", "accent_blue", "#004890")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    muted = _tk(tk, "palette", "muted", "#5a6e7c")
+    size_h2 = float(_tk(tk, "typography", "title_h2", 13.0))
+    size_ft = float(_tk(tk, "typography", "footer", 7.5))
+    h = 26.0
+    sheet.line(x, y, x + w, y, border, 0.5)                       # 顶细线
+    sheet.text(x, y + 5, left_text, size_h2, True, accent, max_w=w * 0.6)
+    # 右侧标语（页眉右，先给三斜线留位）
+    slash_x = x + w - 34
+    sheet.text(slash_x - 8, y + 6, right_text, size_ft, False, muted, align="right",
+               max_w=w * 0.32)
+    for i, lw in enumerate((1.3, 0.9, 0.6)):
+        sx = slash_x + i * 7
+        sheet.line(sx, y + 16, sx + 7, y + 7, accent, lw)
+    sheet.line(x, y + h, x + w, y + h, border, 1.0)               # 底稍粗线
+    return h
+
+
+def chapter_title_block(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                        chapter: str) -> float:
+    """章大标题（样图层级一）：左斜切块 + 大字 + 左粗右细渐变线。"""
+    accent = _tk(tk, "palette", "accent_blue", "#004890")
+    size = float(_tk(tk, "typography", "chapter_title", 16.0))
+    skew_w = float(_tk(tk, "components", "header_skew_w", 5.0))
+    sheet.polygon([(x, y), (x + skew_w, y), (x + skew_w - 3, y + 17), (x - 3, y + 17)],
+                  fill=accent)
+    sheet.text(x + skew_w + 8, y + 1, chapter, size, True, accent, max_w=w - 30)
+    # 渐变粗线：左 3pt 渐弱到右 0.5pt（四段）
+    cy = y + 24
+    segs = ((0.00, 3.0), (0.22, 2.2), (0.45, 1.4), (0.68, 0.8), (0.86, 0.5))
+    line_len = min(150.0, w * 0.35)
+    ends = [r for r, _ in segs[1:]] + [1.0]
+    for (r0, lw), r1 in zip(segs, ends):
+        sheet.line(x + r0 * line_len, cy, x + max(r0 * line_len + 2, r1 * line_len), cy,
+                   accent, lw)
+    return 30.0
+
+
+def section_title_line(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                       section: str) -> float:
+    """节标题条（样图层级二）：小斜切块 + 节名 + 右延细线。"""
+    accent = _tk(tk, "palette", "accent_blue", "#004890")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    size = float(_tk(tk, "typography", "section_title", 13.5))
+    skew_w = float(_tk(tk, "components", "header_skew_w", 5.0)) * 0.7
+    sheet.polygon([(x, y), (x + skew_w, y), (x + skew_w - 2.2, y + 13), (x - 2.2, y + 13)],
+                  fill=accent)
+    sheet.text(x + skew_w + 7, y + 0.5, section, size, True, accent, max_w=w * 0.7)
+    tw = text_width(section, size, True) + skew_w + 16
+    sheet.line(x + tw, y + 7.5, x + w, y + 7.5, border, 0.6)
+    return 18.0
+
+
+def sub_section_title(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+                      text: str, glyph: str = "要") -> float:
+    """小节标题（样图表题行）：圆环图标（CJK 单字）+ 标题 + 右延细线。"""
+    accent = _tk(tk, "palette", "accent_blue", "#004890")
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    size = float(_tk(tk, "typography", "sub_section", 11.0))
+    r = 8.0
+    sheet.rect(x, y, r * 2, r * 2, fill=None, stroke=accent, lw=1.2, radius=r)
+    sheet.text(x + r, y + 3.2, glyph, 9.5, True, accent, align="center")
+    tx = x + r * 2 + 8
+    sheet.text(tx, y + 3.5, text, size, True, accent, max_w=w - 40)
+    tw = text_width(text, size, True) + r * 2 + 18
+    sheet.line(x + tw, y + r, x + w, y + r, border, 0.6)
+    return r * 2 + 6
+
+
+def footer_v2(sheet: Sheet, tk: dict, x: float, y: float, w: float,
+              page_no: int, total_pages: int, note: str = "") -> float:
+    """页脚（样图样式）：细灰线 + 居中页码「— N —」+ 右下天际线剪影。"""
+    border = _tk(tk, "palette", "border", "#c1d0d9")
+    muted = _tk(tk, "palette", "muted", "#5a6e7c")
+    skyline = _tk(tk, "palette", "skyline_blue", "#dbe7f1")
+    size_pn = float(_tk(tk, "typography", "page_no", 9.0))
+    h = 20.0
+    sheet.line(x, y, x + w, y, border, 0.5)
+    # 居中页码
+    pn = f"— {page_no} —" if total_pages <= 1 else f"— {page_no}/{total_pages} —"
+    sheet.text(x + w / 2, y + 5, pn, size_pn, False, muted, align="center")
+    # 右下天际线剪影（固定高度序列，确定性渲染）
+    heights = (0.35, 0.62, 0.92, 0.45, 1.0, 0.7, 0.4, 0.8, 0.55)
+    bw, gapx = 11.0, 2.5
+    total = len(heights) * bw + (len(heights) - 1) * gapx
+    sx = x + w - total
+    for i, hf in enumerate(heights):
+        bh = 16.0 * hf
+        sheet.rect(sx + i * (bw + gapx), y + h - bh, bw, bh, fill=skyline)
+    if note:
+        sheet.text(x, y + 5, note[:28], size_pn - 1.2, False, muted, max_w=w * 0.35)
+    return h
+
+
 def compose_page_tb1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
-    """T-B1 工艺流程型（阶段 2 golden 版式）：KPI + 左图右文 + 图标表。"""
+    """T-B1 v2（样图同构，v1.1 待重签认）：页眉线夹层 → 章大标题(渐变线) → 节标题条
+    → KPI 圆图标卡 → 左 55% 图(深蓝标注片+图签) + 右 45% 正文 → 表题行 → 图标表
+    → 天际线页脚。所有尺寸/颜色取 tokens；页码在页脚居中（样图样式）。
+    """
     w = sheet.w
     h = sheet.h
-    margin_x = float(_tk(tk, "spacing", "margin_x", 72.0))
-    margin_top = float(_tk(tk, "spacing", "margin_top", 82.0))
-    margin_bottom = float(_tk(tk, "spacing", "margin_bottom", 62.0))
+    margin_x = float(_tk(tk, "spacing", "margin_x", 40.0))
+    margin_top = float(_tk(tk, "spacing", "margin_top", 56.0))
+    margin_bottom = float(_tk(tk, "spacing", "margin_bottom", 56.0))
     gap_col = float(_tk(tk, "spacing", "gap_col", 22.6))
     gap_row = float(_tk(tk, "spacing", "gap_row", 14.2))
 
-    content_x = margin_x
-    content_w = w - margin_x * 2
+    x = margin_x
+    cw = w - margin_x * 2
 
-    # 1) 标题区
-    cy = margin_top - 40   # title_block 占 margin_top 内
-    title_h = title_block(sheet, tk, content_x, cy, content_w,
-                          plan.chapter, plan.section, plan.page_no, plan.total_pages)
-    cy += title_h + gap_row
+    # 1) 页眉线夹层
+    cy = margin_top - 26
+    cy += page_header_lines(sheet, tk, x, cy, cw, plan.chapter, plan.footer_note[:20])
 
-    # 2) KPI 三区
-    kpi_h = kpi_strip(sheet, tk, content_x, cy, content_w, plan.kpis)
-    cy += kpi_h + gap_row
+    # 2) 章大标题 + 渐变线
+    cy += 10
+    cy += chapter_title_block(sheet, tk, x, cy, cw, plan.chapter)
 
-    # 3) 底部布局：页脚线锚定页底，图标表钉在页脚线上方，中部填满剩余
-    y_footer = h - margin_bottom + 20
-    icon_h = icon_table_height(tk, content_w, plan.icon_table_headers,
-                               plan.icon_table_rows)
-    icon_y = (y_footer - gap_row - icon_h) if icon_h else y_footer
+    # 3) 节标题条
+    cy += 6
+    cy += section_title_line(sheet, tk, x, cy, cw, plan.section)
 
-    # 4) 中部：左图右文（填满 mid_y 到图标表之间）
-    mid_y = cy
-    mid_h = max(100.0, icon_y - gap_row - mid_y)
+    # 4) KPI 圆图标卡
+    cy += 8
+    kpi_h = kpi_strip(sheet, tk, x, cy, cw, plan.kpis)
+    cy += kpi_h + (gap_row if kpi_h else 4)
 
-    left_ratio = 0.55
-    left_w = (content_w - gap_col) * left_ratio
-    right_w = (content_w - gap_col) * (1 - left_ratio)
-
-    # 左：图位
-    if plan.figure:
-        figure_with_callouts(sheet, tk, content_x, mid_y, left_w, mid_h, plan.figure)
-
-    # 右：正文
-    prose_column(sheet, tk, content_x + left_w + gap_col, mid_y, right_w,
-                 plan.prose, mid_h)
-
-    # 5) 底部图标表（钉在页脚线上方）；无 icon_table 时回退画 page-plan 第一张通用表
+    # 5) 底部布局：页脚锚定页底；表区（表题行 + 表）按实际内容回推表顶
+    y_footer = h - margin_bottom
+    icon_h = icon_table_height(tk, cw, plan.icon_table_headers, plan.icon_table_rows)
+    sub_h = sub_section_title_height(plan)
+    first_tbl = plan.tables[0] if plan.tables else None
     if icon_h:
-        icon_table(sheet, tk, content_x, icon_y, content_w,
-                   plan.icon_table_headers, plan.icon_table_rows)
-    elif plan.tables:
-        t0 = plan.tables[0]
-        t_h = data_table_height(tk, content_w, t0.get("headers", []),
-                                t0.get("rows", []), t0.get("col_ratios"))
-        data_table(sheet, tk, content_x, y_footer - gap_row - t_h, content_w,
-                   t0.get("caption", ""), t0.get("headers", []),
-                   t0.get("rows", []), t0.get("col_ratios"))
+        block_h = sub_h + icon_h
+    elif first_tbl:
+        # 首页通用表最多占 380pt；更高则截断，剩余行经 _tb1_remainder 转续页
+        t_h = data_table_height(tk, cw, first_tbl.get("headers", []),
+                                first_tbl.get("rows", []), first_tbl.get("col_ratios"))
+        block_h = sub_h + min(t_h, 380.0)
+    else:
+        block_h = 0.0
+    table_top = y_footer - 10 - block_h
+
+    # 6) 主区：左 55% 图 + 右 45% 正文（填满 KPI 到表区）
+    mid_y = cy
+    mid_h = max(120.0, table_top - 12 - mid_y)
+    left_w = (cw - gap_col) * 0.55
+    right_w = (cw - gap_col) * 0.45
+    if plan.figure:
+        figure_with_callouts(sheet, tk, x, mid_y, left_w, mid_h, plan.figure)
+    gap_para = float(_tk(tk, "spacing", "gap_para", 9.0))
+    prose_column(sheet, tk, x + left_w + gap_col, mid_y, right_w, plan.prose, mid_h,
+                 para_gap=gap_para)
+
+    # 7) 表题行 + 表（图标表 or 通用表；通用表 max_h 截断防页外——踩坑 #15）
+    plan._tb1_remainder = None
+    if icon_h:
+        ty = table_top
+        ty += sub_section_title(sheet, tk, x, ty, cw,
+                                first_table_caption(plan) or "重点工序实施要点")
+        icon_table(sheet, tk, x, ty, cw, plan.icon_table_headers, plan.icon_table_rows)
+    elif first_tbl:
+        ty = table_top
+        ty += sub_section_title(sheet, tk, x, ty, cw,
+                                first_table_caption(plan) or "重点工序实施要点")
+        max_h = y_footer - 4 - ty
+        used, drawn = data_table(sheet, tk, x, ty, cw, first_tbl.get("caption", ""),
+                                 first_tbl.get("headers", []),
+                                 first_tbl.get("rows", []),
+                                 first_tbl.get("col_ratios"), max_h=max_h)
+        rows = first_tbl.get("rows", [])
+        if drawn < len(rows):
+            rest = dict(first_tbl)
+            rest["rows"] = rows[drawn:]
+            rest["caption"] = str(first_tbl.get("caption", "")) + "（续）"
+            plan._tb1_remainder = rest
+
+    # 8) 天际线页脚（页码居中）
+    footer_v2(sheet, tk, x, y_footer + 10, cw, plan.page_no, plan.total_pages)
+
+
+def sub_section_title_height(plan: PagePlan) -> float:
+    return 22.0
+
+
+def first_table_caption(plan: PagePlan) -> str:
+    if plan.tables:
+        return str(plan.tables[0].get("caption") or "")
+    return ""
 
     # 6) 页脚
     footer_skyline(sheet, tk, content_x, y_footer, content_w, plan.footer_note)
