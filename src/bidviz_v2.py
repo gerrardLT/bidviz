@@ -336,7 +336,7 @@ def vision_transcribe(path: Path, provider: str = "gemini") -> list[str] | None:
     ]}],"temperature":0}
     req=urllib.request.Request(cfg['base_url'].rstrip('/')+'/chat/completions',data=json.dumps(body).encode('utf-8'),headers={'Authorization':'Bearer '+cfg['api_key'],'Content-Type':'application/json'},method='POST')
     try:
-        with urllib.request.urlopen(req,timeout=180) as response: payload=json.load(response)
+        with bidviz._safe_open(req, 180) as response: payload=json.load(response)
     except Exception:
         return None
     content=payload.get('choices',[{}])[0].get('message',{}).get('content','')

@@ -22,8 +22,36 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas as rl_canvas
 
 MM = 2.834645669291339
+# 默认 A3 横向（旧体系 e1/album 沿用）；V1.3 新体系调 set_page('A3', 'portrait') 切换。
+# 注意：module globals 切换后，已创建的 Sheet 不受影响，新 Sheet 会拾取新值。
 PAGE_W = 420 * MM   # A3 横向宽 1190.55pt
 PAGE_H = 297 * MM   # A3 横向高 841.89pt
+
+# 页面规格表：(short_edge_mm, long_edge_mm)
+_PAGE_SPECS: dict[str, tuple[float, float]] = {
+    "A3": (297.0, 420.0),
+    "A4": (210.0, 297.0),
+}
+
+
+def set_page(size: str = "A3", orientation: str = "landscape") -> tuple[float, float]:
+    """切换 module globals PAGE_W/PAGE_H；返回新的 (PAGE_W, PAGE_H)。
+
+    orientation: 'landscape' → 长边为宽；'portrait' → 短边为宽。
+    新体系（V1.3 阶段 2+）用 portrait；旧体系 e1 不改，保持 landscape 默认。
+    """
+    global PAGE_W, PAGE_H
+    spec = _PAGE_SPECS.get(size.upper())
+    if spec is None:
+        raise ValueError(f"unsupported page size: {size}")
+    short_mm, long_mm = spec
+    if orientation.lower() in ("portrait", "p", "竖版"):
+        w_mm, h_mm = short_mm, long_mm
+    else:
+        w_mm, h_mm = long_mm, short_mm
+    PAGE_W = w_mm * MM
+    PAGE_H = h_mm * MM
+    return PAGE_W, PAGE_H
 
 REG = "CN"
 BOLD = "CN-Bold"
@@ -116,18 +144,32 @@ class TableSpec:
 
 
 class Sheet:
-    """A3 横向页面。所有对外坐标以左上角为原点、y 向下，单位为 pt。"""
+    """页面画布。所有对外坐标以左上角为原点、y 向下，单位为 pt。
 
-    def __init__(self, path: Path):
+    实例属性 self.w/self.h 快照创建时的 PAGE_W/PAGE_H；后续即使 set_page
+    切换了 module globals，本实例仍使用创建时的尺寸（避免中途错乱）。
+    """
+
+    def __init__(self, path: Path | None, page_size: tuple[float, float] | None = None):
         register_fonts()
+        w, h = page_size if page_size else (PAGE_W, PAGE_H)
+        self.w = w
+        self.h = h
+        if path is None:
+            # 探针模式：写入内存 BytesIO，仅用于测算页数（不落盘、不标题）
+            import io
+            self.path = None
+            self._buf = io.BytesIO()
+            self.c = rl_canvas.Canvas(self._buf, pagesize=(w, h))
+            return
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path = path
-        self.c = rl_canvas.Canvas(str(path), pagesize=(PAGE_W, PAGE_H))
+        self.c = rl_canvas.Canvas(str(path), pagesize=(w, h))
         self.c.setTitle(path.stem)
 
     # ---------- 基础绘制 ----------
     def _y(self, y_top: float) -> float:
-        return PAGE_H - y_top
+        return self.h - y_top
 
     def rect(self, x: float, y: float, w: float, h: float, fill: str | None = None,
              stroke: str | None = None, lw: float = 0.6, radius: float = 0.0) -> None:
@@ -185,6 +227,51 @@ class Sheet:
         leading = leading or size * 1.45
         return len(wrap(text, size, max_w)) * leading
 
+    def hidden_text(self, x: float, y: float, s: str, size: float = 9.5,
+                    align: str = "left") -> None:
+        """写入不可见文本层（PDF text render mode 3）。
+
+        用途：D10 隐藏检索层——AI 图内文字以矢量 hidden_text 写入同串文本，
+        使纯视觉页仍可 Ctrl+F 与反抽审计；不污染视觉，不影响乱度门禁。
+        坐标语义与 :meth:`text` 一致（y 为顶部向下）。
+
+        实现：reportlab Canvas 无 setTextRenderMode，需经 TextObject 设置
+        render mode 3（invisible）后 drawText。
+
+        注意：PDF 的 Tr（text render mode）与填充色属图形状态，会在内容流中
+        持续生效；必须用 saveState/restoreState 包裹，否则后续所有文本变隐形。
+        """
+        c = self.c
+        c.saveState()
+        try:
+            to = c.beginText()
+            to.setTextRenderMode(3)   # 3 = invisible（不填充、不描边）
+            to.setFont(REG, size)
+            baseline = self._y(y + size * 0.82)
+            if align == "center":
+                w = text_width(s, size)
+                to.setTextOrigin(x - w / 2, baseline)
+            elif align == "right":
+                w = text_width(s, size)
+                to.setTextOrigin(x - w, baseline)
+            else:
+                to.setTextOrigin(x, baseline)
+            to.textLine(s)
+            c.drawText(to)
+        finally:
+            c.restoreState()
+
+    def hidden_para(self, x: float, y: float, text: str, max_w: float,
+                    size: float = 9.5, leading: float | None = None) -> float:
+        """多行隐藏文本层；返回占用高度（与 :meth:`para` 一致）。"""
+        leading = leading or size * 1.45
+        lines = wrap(text, size, max_w)
+        cy = y
+        for ln in lines:
+            self.hidden_text(x, cy, ln, size)
+            cy += leading
+        return cy - y
+
     def pill(self, x: float, y: float, label: str, bg: str = "#e0f2f1", fg: str = "#00695c",
              size: float = 7.5, pad_x: float = 5.0, pad_y: float = 2.5) -> float:
         w = text_width(label, size, True) + pad_x * 2
@@ -195,8 +282,14 @@ class Sheet:
 
     # ---------- 图片 ----------
     def image(self, src: Path | Image.Image, x: float, y: float, w: float, h: float,
-              dpi: float = 200, cache_dir: Path | None = None, fit: str = "contain") -> None:
-        """把图片按目标尺寸压缩为 JPEG 后嵌入（contain 留白 / cover 裁切铺满）。"""
+              dpi: float = 200, cache_dir: Path | None = None, fit: str = "contain",
+              crop_top: float = 0.0, anchor: tuple[float, float] = (0.5, 0.5)) -> None:
+        """把图片按目标尺寸压缩为 JPEG 后嵌入。
+
+        fit: contain 留白（顶对齐）/ cover 裁切铺满。
+        crop_top: cover 前先裁掉原图顶部比例（0~1），去旧素材标题白带。
+        anchor: cover 裁切窗口中心比例 (0~1, 0~1)，默认居中。
+        """
         img = src if isinstance(src, Image.Image) else Image.open(src)
         if img.mode in ("RGBA", "LA", "P"):
             rgba = img.convert("RGBA")
@@ -206,14 +299,27 @@ class Sheet:
         else:
             img = img.convert("RGB")
 
+        if crop_top > 0:
+            cut = int(img.height * min(0.9, crop_top))
+            img = img.crop((0, cut, img.width, img.height))
+
         target_px_w = max(64, int(w / 72.0 * dpi))
         target_px_h = max(64, int(h / 72.0 * dpi))
         if fit == "cover":
+            # 放大到覆盖目标框 → 按 anchor 裁切到目标像素尺寸（裁而非拉伸）
             ratio = max(target_px_w / img.width, target_px_h / img.height)
+            new_w = max(1, int(round(img.width * ratio)))
+            new_h = max(1, int(round(img.height * ratio)))
+            img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            max_left = max(0, new_w - target_px_w)
+            max_top = max(0, new_h - target_px_h)
+            left = int(max_left * min(1.0, max(0.0, anchor[0])))
+            top = int(max_top * min(1.0, max(0.0, anchor[1])))
+            img = img.crop((left, top, left + target_px_w, top + target_px_h))
         else:
             ratio = min(target_px_w / img.width, target_px_h / img.height)
-        if ratio < 1.0:
-            img = img.resize((max(1, int(img.width * ratio)), max(1, int(img.height * ratio))), Image.Resampling.LANCZOS)
+            if ratio < 1.0:
+                img = img.resize((max(1, int(img.width * ratio)), max(1, int(img.height * ratio))), Image.Resampling.LANCZOS)
 
         cache_dir = cache_dir or self.path.parent / "_imgcache"
         cache_dir.mkdir(parents=True, exist_ok=True)

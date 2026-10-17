@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""E1 双页型编译器：视觉页（大图+节点图群+要点栏）/ 数据页（原文逐字两栏+表格跨页）。
+"""E1 双页型编译器：图版页（本节规划的 1~N 张 AI 主图）/ 正文页（原文逐字两栏）。
 
 输出：矢量 PDF，仅图片为位图。文字可选中、可搜索，且可反抽校验覆盖率。
+画几张、每张画什么，由 bidviz_plan 先分析内容再规划，落盘 work/figure-plan.json。
 """
 
 from __future__ import annotations
@@ -57,6 +58,10 @@ def apply_style() -> None:
 BODY_SIZE = 9.5
 BODY_LEAD = 13.8
 
+# 工程报表式配色：单一结构蓝 + 一个警示红，其余黑白灰
+TABLE_ACCENT = "#1f4e79"
+WARN_RED = "#c0392b"
+
 
 @dataclass
 class WorkItem:
@@ -72,34 +77,85 @@ class WorkItem:
         return sum(len(b.text) for b in self.blocks)
 
 
+def section_key(block: Any) -> str:
+    """块所属「节」的稳定键：取 section_path 的章/节两级，忽略三级及以下。
+
+    源块 section_path 由 bidviz_v2.build_blocks 写成「章 / 节 / 一、 / （一）」面包屑，
+    因此前两级对同一节内所有块（含三级/四级标题与正文）恒定不变。
+    """
+    sp = getattr(block, "section_path", "") or ""
+    parts = [p for p in sp.split(" / ") if p.strip()]
+    return " / ".join(parts[:2]) if parts else ""
+
+
+_CHAPTER_RE = re.compile(r"^第[一二三四五六七八九十百\d]+章")
+
+
+def effective_keys(blocks: Sequence[Any]) -> list[str]:
+    """逐块的有效节键；章级标题（只有 1 级 path）归入其后一个节，避免自成空节。
+
+    只有 8 个章标题、且每章首节紧跟在章标题之后，若不归并会凭空多出 8 个
+    “章标题节”，既破坏节数不变量又浪费整对页面。
+    """
+    keys = [section_key(b) for b in blocks]
+    for i, b in enumerate(blocks):
+        if b.kind == "heading" and _CHAPTER_RE.match(b.text) and i + 1 < len(blocks):
+            keys[i] = keys[i + 1]
+    return keys
+
+
 def group_work_items(blocks: Sequence[Any], min_chars: int = 220) -> list[WorkItem]:
-    """按三级标题（一、二、三…）切分项；过短的合并到前一项，避免碎页。"""
+    """按「节」边界 + 三级标题（一、二、…）切分项。
+
+    - 节边界（有效节键变化）必切断，保证每节以自己的章/节标题开头，
+      不再把下一节标题排进上一节末页；
+    - 同一节内章标题紧跟节标题时，两者作为本节的前导块合并（章在前）；
+    - 节内再按三级标题细分，过短的三级项并入前一项，避免碎页。
+    """
+    blocks = list(blocks)
+    keys = effective_keys(blocks)
     items: list[WorkItem] = []
     cur: WorkItem | None = None
-    section = ""
+    cur_key: str | None = None
     seq = 0
 
-    for b in blocks:
+    def start(key: str, title: str, first: Any) -> None:
+        nonlocal cur, seq
+        seq += 1
+        cur = WorkItem(f"W{seq:03d}", title, key, [], [])
+        cur.blocks.append(first)
+        cur.source_pages.append(first.source_page)
+
+    for b, key in zip(blocks, keys):
         t = b.text
+        # 节边界：有效键变化 → 先切断上一节
+        if cur is not None and key != cur_key:
+            items.append(cur)
+            cur = None
+        cur_key = key
         if b.kind == "heading":
-            if re.match(r"^第[一二三四五六七八九十百\d]+[章节]", t):
-                section = t
+            is_boundary = bool(re.match(r"^第[一二三四五六七八九十百\d]+[章节]", t))
             is_item = bool(re.match(r"^[一二三四五六七八九十]+、", t))
+            if is_boundary:
+                # 章/节标题：开启新节首块；若本节已开（章紧跟节）则并入作为前导块
+                if cur is None:
+                    start(key, t, b)
+                else:
+                    cur.blocks.append(b)
+                    cur.source_pages.append(b.source_page)
+                continue
             if is_item:
                 if cur and cur.chars >= min_chars:
                     items.append(cur)
                     cur = None
                 if cur is None:
-                    seq += 1
-                    cur = WorkItem(f"W{seq:03d}", t, section, [], [])
-                    cur.blocks.append(b)
-                    cur.source_pages.append(b.source_page)
+                    start(key, t, b)
                     continue
         if cur is None:
-            seq += 1
-            cur = WorkItem(f"W{seq:03d}", section or "总述", section, [], [])
-        cur.blocks.append(b)
-        cur.source_pages.append(b.source_page)
+            start(key, key.split(" / ")[-1] if key else "总述", b)
+        else:
+            cur.blocks.append(b)
+            cur.source_pages.append(b.source_page)
 
     if cur:
         items.append(cur)
@@ -110,9 +166,10 @@ class Flow:
     """按阅读顺序在若干区域间流动排版：区域放满就换下一个，用完就换页。"""
 
     def __init__(self, sheet: bv.Sheet, regions: Sequence[tuple[float, float, float, float]],
-                 on_new_page=None):
+                 on_new_page=None, rest_regions=None):
         self.sheet = sheet
         self.regions = list(regions)
+        self.rest_regions = list(rest_regions) if rest_regions else list(regions)
         self.idx = 0
         self.y = self.regions[0][1] if self.regions else 0
         self.on_new_page = on_new_page
@@ -137,6 +194,7 @@ class Flow:
     def _new_page(self) -> None:
         self.sheet.c.showPage()
         self.pages_used += 1
+        self.regions = self.rest_regions      # 首页可能让位导览框，次页起用整栏
         self.idx = 0
         self.y = self.region[1]
         if self.on_new_page:
@@ -181,6 +239,17 @@ class Flow:
             self.y += lead
             first = False
 
+    def caption(self, text: str) -> None:
+        """报表题注：蓝色加粗小标题 + 同宽细下划线（工程报表式，无底色）。"""
+        need = 17
+        if not self._ensure(need):
+            return
+        x, _, w, _ = self.region
+        self.sheet.text(x, self.y, text, 9.5, True, TABLE_ACCENT)
+        self.sheet.line(x, self.y + 12.5, x + bv.text_width(text, 9.5, True), self.y + 12.5,
+                        TABLE_ACCENT, 1.0)
+        self.y += need
+
     def spacer(self, h: float) -> None:
         if self._ensure(h):
             self.y += h
@@ -224,165 +293,185 @@ def data_regions() -> list[tuple[float, float, float, float]]:
     ]
 
 
-# ---------------- 视觉页 ----------------
-def visual_page(sheet: bv.Sheet, item: WorkItem, hero: Path | None,
-                params: list[tuple[str, str]], risks: list[str], steps: list[tuple[str, str]],
-                page_no: int, total: int, root: Path) -> None:
-    """视觉页：主视觉按 1.5:1 占满左侧宽度，下方工序卡，右栏参数与风险。"""
-    bv.register_fonts()
+# ---------------- 图版页：本节规划的 1~N 张主图，全部由 AI 生成 ----------------
+FIG_BAR_H = 6.5 * MM     # 题注条高度
+FIG_GAP = 4.5 * MM       # 图位间距
+IDX_HEAD_H = 7 * MM      # 图目录表头高
+IDX_ROW_H = 8.2 * MM     # 图目录行高
 
-    # 顶栏
+
+def _src_label(item: WorkItem) -> str:
+    src = ",".join(str(x) for x in sorted(set(item.source_pages)))
+    return f"原文 P{src}" if src else ""
+
+
+def index_height(n: int) -> float:
+    """底部图目录卡高度：随图数增减，剩下的全给图。"""
+    return IDX_HEAD_H + 2.2 * MM + IDX_ROW_H * max(1, n) + 2 * MM
+
+
+def figure_cell(sheet: bv.Sheet, x: float, y: float, w: float, h: float,
+                img: Path | None, label: str, src: str, root: Path,
+                ph: str = "待生成") -> None:
+    """一个图位：外框 + contain 图片 + 顶部题注条。
+
+    缺图时只画占位框，不回退到程序矢量绘图（能 AI 生成的一律 AI 生成）。
+    """
+    sheet.rect(x, y, w, h, fill="white", stroke=BORDER, lw=0.8)
+    ix, iy, iw, ih = x + 2, y + FIG_BAR_H, w - 4, h - FIG_BAR_H - 4
+    if img and img.exists():
+        sheet.image(img, ix, iy, iw, ih, dpi=170, cache_dir=root / "work/_imgcache", fit="contain")
+    else:
+        sheet.rect(ix, iy, iw, ih, fill="#eef3f6")
+        sheet.text(x + w / 2, iy + ih / 2 - 9, ph, 12, True, "#7b909c", align="center")
+        sheet.text(x + w / 2, iy + ih / 2 + 7, "运行 bidviz generate 后自动替换", 8, False,
+                   "#94a9b6", align="center")
+    sheet.rect(x, y, w, FIG_BAR_H, fill="#1a3d59")
+    sheet.text(x + 5, y + 1.7 * MM, label, 8.6, True, "white", max_w=w - 58 * MM)
+    if src:
+        sheet.text(x + w - 5, y + 1.9 * MM, src, 7, False, "#8fb3cc", align="right")
+
+
+def draw_figure_index(sheet: bv.Sheet, x: float, y: float, w: float, h: float,
+                      item: WorkItem, figs: list[dict], imgs: dict) -> None:
+    """本节图目录：图号、图题、为何画这张、生成状态与原文页码。"""
+    sheet.rect(x, y, w, h, fill="#f6f8fa", stroke=BORDER, lw=0.8)
+    sheet.rect(x, y, w, IDX_HEAD_H, fill=HEADER_BG)
+    sheet.text(x + 5, y + 1.9 * MM, "本节图目录与原文溯源", 9.5, True, "white")
+    sheet.text(x + w - 5, y + 2.2 * MM, _src_label(item), 7.5, False, "#9dc0d6", align="right")
+    cy = y + IDX_HEAD_H + 2.2 * MM
+    for f in figs:
+        if cy + IDX_ROW_H > y + h - 2 * MM:
+            break
+        no = int(f.get("no", 1))
+        ok = bool(imgs.get(no))
+        sheet.rect(x + 3, cy - 1.6, w - 6, IDX_ROW_H - 2.4, fill="white", stroke=BORDER, lw=0.3)
+        sheet.text(x + 5, cy, f"图 {no}", 8.2, True, ACCENT)
+        sheet.text(x + 16 * MM, cy, f.get("name", ""), 8.2, False, TEXT, max_w=64 * MM)
+        sheet.text(x + 82 * MM, cy, str(f.get("why", ""))[:64], 7.4, False, MUTED,
+                   max_w=w - 128 * MM)
+        sheet.text(x + w - 5, cy, "已生成" if ok else "待生成", 7.8, True,
+                   "#2e7d32" if ok else WARN, align="right")
+        cy += IDX_ROW_H
+    if cy <= y + IDX_HEAD_H + 2.2 * MM:
+        sheet.text(x + w / 2, y + h / 2, "本节未规划图位", 8.5, False, MUTED, align="center")
+
+
+def gallery_page(sheet: bv.Sheet, item: WorkItem, imgs: dict, figs: list[dict],
+                 page_no: int, total: int, root: Path) -> None:
+    """图版页：把本节规划的 1~N 张主图排满一页，底部附矢量图目录。
+
+    页上每一张图都是 AI 生成的位图；只有题注、图目录与页眉页脚是矢量文字。
+    """
+    bv.register_fonts()
+    import bidviz_plan as plan
+
     sheet.rect(0, 0, PAGE_W, HEAD_H, fill=DARK)
     sheet.text(MARGIN, 3.2 * MM, _cfg().header_text, 8.5, False, "#7ea6c2")
     sheet.text(MARGIN, 8.6 * MM, item.title, 15, True, "white", max_w=PAGE_W - MARGIN * 2 - 120)
-    sheet.text(PAGE_W - MARGIN, 6 * MM, f"{item.work_id}  视觉页", 11, True, CYAN, align="right")
-    sheet.text(PAGE_W - MARGIN, 12.5 * MM, item.section_path[:46], 7.5, False, "#8fb3cc", align="right")
-
-    top = HEAD_H + 6 * MM
-    left_w = (PAGE_W - MARGIN * 2 - COL_GAP) * 0.62
-    right_x = MARGIN + left_w + COL_GAP
-    right_w = PAGE_W - MARGIN - right_x
-
-    # 主视觉：高度按 1.5:1 算，正好匹配 gpt-image-2.5 的 1536x1024
-    hero_h = left_w / 1.5
-    sheet.rect(MARGIN, top, left_w, hero_h, fill="white", stroke=BORDER, lw=0.8)
-    if hero and hero.exists():
-        sheet.image(hero, MARGIN + 2, top + 2, left_w - 4, hero_h - 4, dpi=170,
-                    cache_dir=root / "work/_imgcache", fit="cover")
-    else:
-        sheet.rect(MARGIN + 2, top + 2, left_w - 4, hero_h - 4, fill="#eef3f6")
-        sheet.text(MARGIN + left_w / 2, top + hero_h / 2 - 6,
-                   "主视觉待生成（运行 generate 后自动替换）", 11, False, "#7b909c", align="center")
-    sheet.rect(MARGIN, top, left_w, 6 * MM, fill="#1a3d59")
-    sheet.text(MARGIN + 6, top + 1.6 * MM, f"图 1.1  {item.title} · BIM 施工工况全景", 9, True, "white",
-               max_w=left_w - 12)
-
-    # 下方：工程标准工艺流程图（替代原工序卡与旧摘录）
-    import bidviz_charts as bc
-    flow_top = top + hero_h + 4.5 * MM
-    flow_h = BODY_BOTTOM - flow_top
-    if flow_h > 20 * MM:
-        bc.draw_flowchart(sheet, MARGIN, flow_top, left_w, flow_h, steps)
-
-    # 右栏：自适应参数表与 5x5 风险控制矩阵
-    # 顶部：关键工艺参数
-    ry = top
-    p_box_h = 75 * MM
-    bc.draw_section_panel(sheet, right_x, ry, right_w, p_box_h, "关键工艺参数与技术控制指标", "实测实量与容许偏差")
-    table_y = ry + 6.5 * MM
-    for name, val in params[:6]:
-        hh = 10.2 * MM
-        if table_y + hh > ry + p_box_h - 2 * MM:
-            break
-        sheet.rect(right_x + 3 * MM, table_y, right_w - 6 * MM, hh, fill="white", stroke=BORDER, lw=0.4)
-        sheet.text(right_x + 4.5 * MM, table_y + 2.0 * MM, name, 7.6, True, DARK, max_w=right_w * 0.38)
-        sheet.para(right_x + right_w * 0.42, table_y + 1.8 * MM, val, right_w * 0.54 - 6 * MM,
-                   size=7.0, leading=8.8, color=TEXT, max_lines=2)
-        table_y += hh
-
-    # 底部：5x5 风险矩阵
-    risk_top = ry + p_box_h + 4.5 * MM
-    risk_h = BODY_BOTTOM - risk_top
-    if risk_h > 25 * MM:
-        scored_risks = bc.extract_risks_scored(item.blocks)
-        bc.draw_risk_matrix(sheet, right_x, risk_top, right_w, risk_h, scored_risks)
-
-    footer(sheet, item, page_no, total)
-
-
-def data_page_header(sheet: bv.Sheet, item: WorkItem, sub_page: int, page_no: int, total: int) -> None:
-    sheet.rect(0, 0, PAGE_W, HEAD_H, fill=DARK)
-    sheet.text(MARGIN, 3.2 * MM, _cfg().header_text, 8.5, False, "#7ea6c2")
-    sheet.text(MARGIN, 8.6 * MM, item.title + (f"（续 {sub_page}）" if sub_page > 1 else ""),
-               14, True, "white", max_w=PAGE_W - MARGIN * 2 - 160)
-    sheet.text(PAGE_W - MARGIN, 6 * MM, f"{item.work_id}  工程控制图表 ({sub_page})", 11, True, CYAN, align="right")
-    sheet.text(PAGE_W - MARGIN, 12.5 * MM, item.section_path[:46], 7.5, False, "#8fb3cc", align="right")
-
-
-def text_pages(sheet: bv.Sheet, item: WorkItem, page_no: int, total: int) -> int:
-    """把本节完整正文排成可搜索、可复制的矢量文字页；返回占用页数。"""
-    bv.register_fonts()
-
-    def decorate(sub_page: int) -> None:
-        data_page_header(sheet, item, sub_page, page_no + sub_page - 1, total)
-        footer(sheet, item, page_no + sub_page - 1, total)
-
-    decorate(1)
-    flow = Flow(sheet, data_regions(), on_new_page=decorate)
-    for block in item.blocks:
-        text = getattr(block, "text", "").strip()
-        if not text:
-            continue
-        if getattr(block, "kind", "body") == "heading":
-            if re.match(r"^第[一二三四五六七八九十百\d]+章", text):
-                level = 1
-            elif re.match(r"^第[一二三四五六七八九十百\d]+节", text):
-                level = 2
-            else:
-                level = 3
-            flow.heading(text, level)
-        else:
-            flow.paragraph(text)
-            flow.spacer(2)
-    return flow.pages_used
-
-
-def chart_page(sheet: bv.Sheet, item: WorkItem, page_no: int, total: int) -> None:
-    """数据图表页：全矢量图表驱动，替代旧散文文字页。
-    包含：进度横道图 (Gantt)、施工管理 RACI 矩阵、材料设备控制表、ITP 检验试验计划表。
-    """
-    bv.register_fonts()
-    import bidviz_charts as bc
-
-    # 顶栏
-    sheet.rect(0, 0, PAGE_W, HEAD_H, fill=DARK)
-    sheet.text(MARGIN, 3.2 * MM, _cfg().header_text, 8.5, False, "#7ea6c2")
-    sheet.text(MARGIN, 8.6 * MM, f"{item.title} · 工程管理控制图表", 15, True, "white", max_w=PAGE_W - MARGIN * 2 - 120)
-    sheet.text(PAGE_W - MARGIN, 6 * MM, f"{item.work_id}  图表页", 11, True, CYAN, align="right")
+    sheet.text(PAGE_W - MARGIN, 6 * MM, f"{item.work_id}  图版页", 11, True, CYAN, align="right")
     sheet.text(PAGE_W - MARGIN, 12.5 * MM, item.section_path[:46], 7.5, False, "#8fb3cc", align="right")
 
     top = HEAD_H + 6 * MM
     avail_w = PAGE_W - MARGIN * 2
-    half_w = (avail_w - COL_GAP) / 2.0
-    half_h = (BODY_BOTTOM - top - 5 * MM) / 2.0
+    body_h = BODY_BOTTOM - top
+    n = len(figs)
 
-    # 1. 左上：进度横道图
-    tasks = bc.extract_gantt_tasks(item.blocks)
-    bc.draw_gantt_chart(sheet, MARGIN, top, half_w, half_h, tasks)
+    if n == 0:      # 未规划图位：只画占位说明，不回退程序绘图
+        sheet.rect(MARGIN, top, avail_w, body_h, fill="#eef3f6", stroke=BORDER, lw=0.8)
+        sheet.text(PAGE_W / 2, top + body_h / 2 - 8, "本节未规划图位", 13, True, "#7b909c",
+                   align="center")
+        sheet.text(PAGE_W / 2, top + body_h / 2 + 10, "先运行 bidviz plan 生成图位规划", 9, False,
+                   "#94a9b6", align="center")
+        footer(sheet, item, page_no, total)
+        return
 
-    # 2. 右上：RACI 职责矩阵
-    roles, raci_tasks, matrix = bc.extract_raci_data(item.blocks)
-    bc.draw_raci_matrix(sheet, MARGIN + half_w + COL_GAP, top, half_w, half_h, roles, raci_tasks, matrix)
+    idx_h = min(index_height(n), body_h * 0.4)
+    stack_h = body_h - idx_h - FIG_GAP            # 留给图区的总高
+    cols = 1 if n == 1 else 2
+    rows = -(-n // cols)
+    cell_w = (avail_w - COL_GAP * (cols - 1)) / cols
+    budget = (stack_h - FIG_GAP * (rows - 1)) / rows   # 每行高度上限
+    src = _src_label(item)
 
-    # 3. 左下：材料设备标准表
-    bot_y = top + half_h + 5 * MM
-    mat_rows = bc.extract_materials(item.blocks)
-    bc.draw_section_panel(sheet, MARGIN, bot_y, half_w, half_h, "主要施工材料与机械设备进场检验表", "抽检频次与复验")
-    if mat_rows:
-        spec = bc.build_material_table_spec(mat_rows[:7], half_w - 6 * MM)
-        sheet.table(spec, MARGIN + 3 * MM, bot_y + 6.5 * MM, max_h=half_h - 8 * MM)
-    else:
-        sheet.text(MARGIN + half_w / 2, bot_y + half_h / 2, "本分项未涉及特殊材料或采用标准甲供设备", 8.0, False, MUTED, align="center")
+    # 先按每张图的真实宽高比算出画出来的尺寸，再定每行实际高度，最后整组垂直居中，
+    # 避免图与图目录之间出现大片空洞。
+    placed: list[tuple[int, int, bool, float, float, float, int, Any, dict]] = []
+    row_h = [0.0] * rows
+    for i, f in enumerate(figs):
+        no = int(f.get("no", i + 1))
+        img = imgs.get(no)
+        ratio = max(plan.image_ratio(img, float(f.get("ratio") or 1.414)), 0.3)
+        span = rows > 1 and n % cols == 1 and i == n - 1     # 奇数张时末格跳列
+        w = avail_w if span else cell_w
+        dw = min(w, budget * ratio)
+        dh = dw / ratio
+        r, c = divmod(i, cols)
+        placed.append((r, c, span, w, dw, dh, no, img, f))
+        row_h[r] = max(row_h[r], dh)
 
-    # 4. 右下：ITP 检验试验计划
-    itp_rows = extract_itp(item)
-    bc.draw_section_panel(sheet, MARGIN + half_w + COL_GAP, bot_y, half_w, half_h, "质量控制点与 ITP 检验试验计划表", "H=停工待检 / W=见证 / S=旁站")
-    if itp_rows:
-        itp_spec = build_itp_table(itp_rows[:7])
-        itp_spec.col_w = [(half_w - 6 * MM) * 0.32, (half_w - 6 * MM) * 0.44, (half_w - 6 * MM) * 0.24]
-        sheet.table(itp_spec, MARGIN + half_w + COL_GAP + 3 * MM, bot_y + 6.5 * MM, max_h=half_h - 8 * MM)
-    else:
-        sheet.text(MARGIN + half_w + COL_GAP + half_w / 2, bot_y + half_h / 2, _cfg().standard_text, 8.0, False, MUTED, align="center")
+    used = sum(row_h) + FIG_GAP * (rows - 1) + FIG_GAP + idx_h
+    y0 = top + max(0.0, (body_h - used) / 2)
+    row_y = [y0]
+    for r in range(1, rows):
+        row_y.append(row_y[-1] + row_h[r - 1] + FIG_GAP)
 
+    for r, c, span, w, dw, dh, no, img, f in placed:
+        x = MARGIN + (0 if span else c * (cell_w + COL_GAP))
+        label = (f"图 {no}  {item.title} · {f.get('name', '')}" if n == 1
+                 else f"图 {no}  {f.get('name', '')}")
+        figure_cell(sheet, x + (w - dw) / 2, row_y[r] + (row_h[r] - dh) / 2, dw, dh, img,
+                    label, src if no == 1 else "", root, ph=f"图 {no} 待生成")
+
+    draw_figure_index(sheet, MARGIN, row_y[-1] + row_h[-1] + FIG_GAP, avail_w, idx_h,
+                      item, figs, imgs)
     footer(sheet, item, page_no, total)
+
+
+def _crumb(item: WorkItem) -> str:
+    parts = [p for p in (item.section_path or "").split(" / ") if p.strip()]
+    return "  ›  ".join(parts) if parts else (item.title or "总述")
+
+
+def content_tables(item: WorkItem) -> list:
+    """本节内容报表：由 bidviz_plan.curate_tables 策展（一句只归一类、拆字段、材料只留真名词）。"""
+    import bidviz_plan as plan
+    return plan.curate_tables(item)
+
+
+def content_tables_page(sheet: bv.Sheet, item: WorkItem, page_no: int, total: int) -> int:
+    """内容要点页：工程报表式。把本节提炼为工序/参数/风险/资源表格填入两栏；返回页数。"""
+    bv.register_fonts()
+    col_w = (PAGE_W - MARGIN * 2 - COL_GAP) / 2
+
+    def decorate(sub_page: int) -> None:
+        data_page_header(sheet, item, page_no + sub_page - 1, total)
+        footer(sheet, item, page_no + sub_page - 1, total)
+
+    decorate(1)
+    flow = Flow(sheet, data_regions(), on_new_page=decorate)
+    for caption, headers, rows, ratios in content_tables(item):
+        flow.caption(caption)
+        widths = [max(24.0, col_w * r) for r in ratios]
+        spec = bv.TableSpec(headers, rows, widths, header_bg=TABLE_ACCENT, font_size=8.4)
+        flow.table(spec)
+        flow.spacer(5)
+    return flow.pages_used
+
+
+def data_page_header(sheet: bv.Sheet, item: WorkItem, page_no: int, total: int) -> None:
+    sheet.rect(0, 0, PAGE_W, HEAD_H, fill=DARK)
+    sheet.text(MARGIN, 3.2 * MM, _cfg().header_text, 8.5, False, "#7ea6c2")
+    sheet.text(MARGIN, 8.8 * MM, _crumb(item), 13, True, "white", max_w=PAGE_W - MARGIN * 2 - 160)
+    sheet.text(PAGE_W - MARGIN, 6 * MM, item.work_id, 11, True, CYAN, align="right")
+    sheet.text(PAGE_W - MARGIN, 12.5 * MM, "内容要点", 7.5, False, "#8fb3cc", align="right")
 
 
 def footer(sheet: bv.Sheet, item: WorkItem, page_no: int, total: int) -> None:
     y = PAGE_H - FOOT_H
     sheet.line(MARGIN, y, PAGE_W - MARGIN, y, BORDER, 0.6)
-    sheet.text(MARGIN, y + 2.5 * MM, "BIM 数字化施工交付体系 · 矢量排版 · 文字可检索可选中", 7, False, MUTED)
     src = ",".join(str(x) for x in sorted(set(item.source_pages)))
-    sheet.text(PAGE_W / 2, y + 2.5 * MM, f"对应原文档页码：{src}", 7, False, MUTED, align="center")
+    sheet.text(MARGIN, y + 2.5 * MM, f"对应原文档页码：{src}", 7, False, MUTED)
     page_label = f"第 {page_no} / {total} 页" if total else f"第 {page_no} 页"
     sheet.text(PAGE_W - MARGIN, y + 2.5 * MM, page_label, 7.5, True, ACCENT, align="right")
 
@@ -537,46 +626,6 @@ def visual_prompt(item: WorkItem, style: str | None = None, max_source_chars: in
     ])
 
 
-# ---------------- 表格构造 ----------------
-def build_param_table(rows: list[tuple[str, str]]) -> bv.TableSpec:
-    body = []
-    for name, val in rows:
-        strict = any(k in val for k in ("严禁", "必须", "≥", "不小于", "不得"))
-        body.append([
-            bv.Cell(name, bold=True, size=9.0),
-            bv.Cell(val, size=9.0),
-            bv.Cell(pill=("强制主控", "#ffebee", "#c62828") if strict else ("技术参数", "#e0f2f1", "#00695c")),
-        ])
-    return bv.TableSpec(
-        headers=["控制分项", "规范与设计控制参数", "控制等级"],
-        rows=body,
-        col_w=[150, 420, 100],
-        header_bg=HEADER_BG, font_size=9.0, pad=5,
-    )
-
-
-def build_risk_table(rows: list[tuple[str, str, str]]) -> bv.TableSpec:
-    body = [[bv.Cell(a, bold=True, size=9.0), bv.Cell(b, size=9.0), bv.Cell(c, size=9.0),
-             bv.Cell(pill=("总工/监理", "#ffebee", "#c62828"))] for a, b, c in rows]
-    return bv.TableSpec(
-        headers=["风险与通病", "诱因分析与征兆", "预防及纠偏处置对策", "处置权限"],
-        rows=body,
-        col_w=[140, 210, 240, 80],
-        header_bg=RED_BG, font_size=9.0, pad=5,
-    )
-
-
-def build_itp_table(rows: list[tuple[str, str]]) -> bv.TableSpec:
-    body = [[bv.Cell(a, bold=True, size=9.0), bv.Cell(b, size=9.0),
-             bv.Cell(pill=("停检点(H)", "#ffebee", "#c62828"))] for a, b in rows]
-    return bv.TableSpec(
-        headers=["检验与试验节点", "报验与见证要求", "类型"],
-        rows=body,
-        col_w=[170, 400, 100],
-        header_bg=HEADER_BG, font_size=9.0, pad=5,
-    )
-
-
 # ---------------- 结构化抽取 ----------------
 PARAM_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:mm|cm|m|km|%|天|d|h|min|s|级|次|组|座|孔|kV|V|A|MPa|kN|μm|kg|t|人|道|处|倍|度|℃)")
 RISK_RE = re.compile(r"严禁|不得|禁止|防止|避免|注意|危险|事故|消防|隐患|破坏|塌方|裂缝|渗漏|空鼓|超挖|触电|坠落")
@@ -629,12 +678,3 @@ def extract_steps(item: WorkItem) -> list[tuple[str, str]]:
         desc = picked[i][:70] if i < len(picked) else "严格执行施工组织设计与国家现行规范标准，强化工序协同管理。"
         steps.append((title, desc))
     return steps
-
-
-def extract_itp(item: WorkItem) -> list[tuple[str, str]]:
-    return [
-        ("工序① 技术交底与图纸会审", "开工前完成专业工种技术与安全交底，签署交底记录并报监理备案。"),
-        ("工序② 进场物资与隐蔽报验", "主要材料须有出厂合格证并完成复验；隐检合格后方可进入下道工序。"),
-        ("工序③ 关键工序过程见证", "关键节点设停检点(H)，由项目总工、质检员与专业监理现场旁站见证。"),
-        ("工序④ 检验批与实体核验", "按设计规范逐段测量标高、平整度与外观，签署验收资料归档。"),
-    ]

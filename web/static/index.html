@@ -61,10 +61,23 @@
   .meta{font-size:11.5px;color:var(--mut);white-space:nowrap}
   .sec-b{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;padding:16px}
 
-  .imgbox{background:#08131b;border:1px solid var(--line);border-radius:8px;overflow:hidden;
-          display:flex;align-items:center;justify-content:center;min-height:230px;position:relative}
-  .imgbox img{width:100%;height:auto;display:block;cursor:zoom-in}
-  .imgbox .ph{color:#4a6478;font-size:13px;padding:60px 20px;text-align:center;line-height:1.7}
+  .figs{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);align-content:start}
+  .figs.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .fig{background:#08131b;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+       display:flex;flex-direction:column}
+  .fig .shot{display:flex;align-items:center;justify-content:center;min-height:180px;background:#061019}
+  .fig .shot img{width:100%;height:auto;display:block;cursor:zoom-in}
+  .fig .cap{padding:8px 10px 6px;border-top:1px solid var(--line);font-size:11.5px;
+            color:var(--mut);line-height:1.55}
+  .fig .cap b{color:var(--txt);font-size:12px}
+  .fig .cap .gen{display:block;opacity:.65;margin-top:3px;font-size:10.5px}
+  .fig .acts{display:flex;gap:6px;padding:0 10px 9px;flex-wrap:wrap}
+  .fig .acts .btn{padding:4px 9px;font-size:11.5px}
+  .ph{color:#4a6478;font-size:12.5px;padding:52px 16px;text-align:center;line-height:1.7}
+  .chip{background:#0d1f2b;border:1px solid var(--line);color:var(--mut);padding:4px 10px;
+        border-radius:20px;font-size:11.5px;font-weight:700;cursor:pointer}
+  .chip.on{background:#0e3a54;color:var(--acc);border-color:#1d5f7a}
+  .chip.cust::after{content:" ●";color:var(--warn)}
 
   .fields{display:flex;flex-direction:column;gap:11px;min-width:0}
   label{font-size:11.5px;color:var(--mut);font-weight:700;letter-spacing:.3px;
@@ -100,6 +113,7 @@
   <span class="meta" id="docinfo"></span>
   <div class="grow"></div>
   <div class="status"><span class="dot" id="dot"></span><span id="statustxt">就绪</span></div>
+  <button class="btn" id="replan">重新规划全册</button>
   <button class="btn" id="saveall">保存全部改动</button>
   <button class="btn pri" id="rebuild">重新汇编 PDF</button>
 </header>
@@ -117,8 +131,9 @@
 
 <script>
 let DOC = null;
-const dirty = new Map();   // sid -> {title, prompt, blocks}
+const dirty = new Map();   // sid -> {title, body, prompts:{图号:提示词}}
 let polling = null;
+let lastMsg = '';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -139,7 +154,10 @@ async function load() {
   renderDoc();
   const secs = DOC.chapters.reduce((n,c)=>n+c.sections.length,0);
   const chars = DOC.chapters.reduce((n,c)=>n+c.sections.reduce((m,s)=>m+s.chars,0),0);
-  $('#docinfo').textContent = `${DOC.chapters.length} 章 / ${secs} 节 / ${chars.toLocaleString()} 字`;
+  const p = DOC.progress || {};
+  $('#docinfo').textContent =
+    `${DOC.chapters.length} 章 / ${secs} 节 / ${chars.toLocaleString()} 字 · ` +
+    `图 ${p.planned||0} 张（已生成 ${p.generated||0}）`;
 }
 
 function renderTree() {
@@ -169,43 +187,97 @@ function renderDoc() {
   bind();
 }
 
+function figHTML(s, f) {
+  const shot = f.image
+    ? `<img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="${esc(s.title)} 图${f.no}">`
+    : `<div class="ph">尚未生成<br>点下方「重生此图」</div>`;
+  return `
+  <div class="fig" data-s="${s.id}" data-no="${f.no}">
+    <div class="shot">${shot}</div>
+    <div class="cap">
+      <b>图 ${f.no} · ${esc(f.name || '')}</b>${f.custom ? ' <span style="color:var(--warn)">已改词</span>' : ''}
+      <div>${esc(f.why || '')}</div>
+      <span class="gen">${esc(f.gen || '')}</span>
+    </div>
+    <div class="acts">
+      <button class="btn" data-act="edit" data-s="${s.id}" data-no="${f.no}">编辑提示词</button>
+      <button class="btn" data-act="regen" data-s="${s.id}" data-no="${f.no}">重生此图</button>
+    </div>
+  </div>`;
+}
+
+/* 十维度（与 src/bidviz_layout.py 同步）：[单字徽, 名称, 主色, 浅底] */
+const DIMS = {
+  overview: ['概', '概况依据', '#607d8b', '#eceff1'],
+  org:      ['组', '部署组织', '#5c6bc0', '#e8eaf6'],
+  quality:  ['质', '质量验收', '#43a047', '#e8f5e9'],
+  process:  ['工', '方案工艺', '#00897b', '#e0f2f1'],
+  time:     ['进', '进度工期', '#f57c00', '#fff3e0'],
+  resource: ['资', '资源配置', '#8d6e63', '#efebe9'],
+  layout:   ['平', '平面运输', '#26a69a', '#e0f2f1'],
+  safety:   ['安', '安全风险', '#e53935', '#ffebee'],
+  civil:    ['文', '文明季节', '#7cb342', '#f1f8e9'],
+  emergency:['应', '应急保护', '#d81b60', '#fce4ec'],
+};
+function dimsHTML(dims) {
+  return (dims || []).map(([k, n]) => {
+    const d = DIMS[k]; if (!d) return '';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${d[3]};color:${d[2]};border-radius:9px;padding:1px 8px 1px 2px;font-size:11px;font-weight:600"><span style="background:${d[2]};color:#fff;border-radius:6px;padding:0 4px;line-height:1.5">${d[0]}</span>${d[1]} ${n}</span>`;
+  }).join('');
+}
+
 function secHTML(s) {
-  const img = s.image
-    ? `<img src="${s.image}?t=${s.image_ts}" loading="lazy" alt="${esc(s.title)}">`
-    : `<div class="ph">尚未生成主视觉<br>点右侧「重新生图」</div>`;
+  const figs = s.figures || [];
+  const first = figs[0] || { no: 1, prompt: '' };
   return `
   <section class="sec" id="sec-${s.id}">
     <div class="sec-h">
       <span class="sec-id">${s.id}</span>
       <input class="sec-title" data-f="title" data-s="${s.id}" value="${esc(s.title)}">
-      <span class="meta">${s.chars.toLocaleString()} 字</span>
+      <span class="meta">${s.chars.toLocaleString()} 字 · ${figs.length} 图</span>
       ${s.edited ? '<span class="pill ed">已编辑</span>' : ''}
       <button class="btn" data-act="save" data-s="${s.id}">保存</button>
-      <button class="btn" data-act="regen" data-s="${s.id}">重新生图</button>
-      <button class="btn" data-act="reset" data-s="${s.id}">还原</button>
+      <button class="btn" data-act="replan" data-s="${s.id}">重规划</button>
+      <button class="btn" data-act="reset" data-s="${s.id}">还原正文</button>
     </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 8px">${dimsHTML(s.dims)}</div>
     <div class="sec-b">
-      <div class="imgbox">${img}</div>
+      <div class="figs${figs.length > 1 ? ' two' : ''}">
+        ${figs.length ? figs.map(f => figHTML(s, f)).join('')
+                      : '<div class="ph">本节未规划图位，点右上「重规划」</div>'}
+      </div>
       <div class="fields">
         <div class="tabs">
           <div class="tab on" data-tab="prompt" data-s="${s.id}">生图提示词</div>
           <div class="tab" data-tab="body" data-s="${s.id}">正文内容</div>
-          <div class="tab" data-tab="struct" data-s="${s.id}">提取结构</div>
+          <div class="tab" data-tab="struct" data-s="${s.id}">规划依据</div>
         </div>
-        <textarea class="ta-prompt" data-f="prompt" data-s="${s.id}">${esc(s.prompt)}</textarea>
+        <div class="row">
+          ${figs.map((f, i) => `<span class="chip${i === 0 ? ' on' : ''}${f.custom ? ' cust' : ''}"
+            data-s="${s.id}" data-no="${f.no}">图 ${f.no}</span>`).join('')}
+        </div>
+        <textarea class="ta-prompt" data-f="prompt" data-s="${s.id}" data-no="${first.no}">${esc(first.prompt || '')}</textarea>
         <textarea class="ta-body" data-f="body" data-s="${s.id}" style="display:none">${esc(s.blocks.filter(b=>b.kind!=='heading').map(b=>b.text).join('\n\n'))}</textarea>
-        <div class="struct" data-s="${s.id}" style="display:none;font-size:12.5px;line-height:1.75;color:var(--mut);max-height:320px;overflow:auto"></div>
+        <div class="struct" data-s="${s.id}" style="display:none;font-size:12.5px;line-height:1.75;color:var(--mut);max-height:340px;overflow:auto"></div>
       </div>
     </div>
   </section>`;
 }
 
-function structHTML(s) {
-  const li = (a) => a.length ? '<ul style="margin:2px 0 8px 16px">' + a.map(x=>`<li>${esc(Array.isArray(x)?x.join(' — '):x)}</li>`).join('') + '</ul>' : '<div style="margin:2px 0 8px 16px;opacity:.5">—</div>';
-  return `<b style="color:var(--blue)">关键参数</b>${li(s.params)}
-          <b style="color:var(--blue)">风险提示</b>${li(s.risks)}
-          <b style="color:var(--blue)">工序步骤</b>${li(s.steps)}
-          <b style="color:var(--blue)">检验试验(ITP)</b>${li(s.itp)}`;
+function factsHTML(s) {
+  const f = s.facts || {};
+  const li = a => a && a.length
+    ? '<ul style="margin:2px 0 8px 16px">' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>'
+    : '<div style="margin:2px 0 8px 16px;opacity:.55">—（原文没给出可落地的内容，不会画进图）</div>';
+  return `<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px">${dimsHTML(s.dims)}</div>
+          <div style="margin-bottom:9px">分项 ${f.items||0} · 工序 ${f.proc||0} · 参数 ${f.param||0}
+          · 风险 ${f.risk||0} · 材料 ${f.mat||0} · 工期 ${f.time||0} · 岗位 ${f.org||0}
+          · 安全 ${f.safe||0} · 质量 ${f.qa||0} · 平面 ${f.layout||0}
+          <br>风格路由：${esc(f.style || '')}</div>
+          <b style="color:var(--blue)">原文落地的工序</b>${li(f.steps)}
+          <b style="color:var(--blue)">原文落地的参数句</b>${li(f.params)}
+          <b style="color:var(--blue)">原文落地的风险句</b>${li(f.risks)}
+          <b style="color:var(--blue)">原文落地的材料设备</b>${li(f.mats)}`;
 }
 
 /* ---------------- 交互 ---------------- */
@@ -213,8 +285,14 @@ function bind() {
   document.querySelectorAll('.sec-title').forEach(el => {
     el.oninput = () => stash(el.dataset.s, 'title', el.value);
   });
-  document.querySelectorAll('textarea[data-f]').forEach(el => {
-    el.oninput = () => stash(el.dataset.s, el.dataset.f, el.value);
+  document.querySelectorAll('textarea[data-f="body"]').forEach(el => {
+    el.oninput = () => stash(el.dataset.s, 'body', el.value);
+  });
+  document.querySelectorAll('textarea[data-f="prompt"]').forEach(el => {
+    el.oninput = () => stashPrompt(el.dataset.s, el.dataset.no, el.value);
+  });
+  document.querySelectorAll('.chip').forEach(c => {
+    c.onclick = () => switchFig(c.dataset.s, c.dataset.no);
   });
   document.querySelectorAll('.tab').forEach(t => {
     t.onclick = () => {
@@ -226,18 +304,20 @@ function bind() {
       const st = box.querySelector('.struct');
       st.style.display = t.dataset.tab === 'struct' ? '' : 'none';
       if (t.dataset.tab === 'struct' && !st.dataset.done) {
-        const s = findSec(sid); st.innerHTML = structHTML(s); st.dataset.done = '1';
+        st.innerHTML = factsHTML(findSec(sid)); st.dataset.done = '1';
       }
     };
   });
-  document.querySelectorAll('.imgbox img').forEach(im => {
+  document.querySelectorAll('.fig .shot img').forEach(im => {
     im.onclick = () => { $('#zoomimg').src = im.src; $('#zoom').style.display = 'flex'; };
   });
   document.querySelectorAll('button[data-act]').forEach(b => {
     b.onclick = () => {
-      const sid = b.dataset.s, act = b.dataset.act;
+      const sid = b.dataset.s, act = b.dataset.act, no = b.dataset.no || 1;
       if (act === 'save')   saveSec(sid);
-      if (act === 'regen')  regen(sid);
+      if (act === 'regen')  regen(sid, no);
+      if (act === 'edit')   switchFig(sid, no);
+      if (act === 'replan') replan(sid);
       if (act === 'reset')  resetSec(sid);
     };
   });
@@ -248,10 +328,34 @@ function findSec(sid) {
   return null;
 }
 
+function findFig(sid, no) {
+  const s = findSec(sid);
+  return ((s && s.figures) || []).find(f => f.no === +no) || null;
+}
+
+function basePrompt(sid, no) { const f = findFig(sid, no); return f ? f.prompt : ''; }
+
+function promptOf(sid, no) {
+  const d = dirty.get(sid);
+  if (d && d.prompts && d.prompts[no] !== undefined) return d.prompts[no];
+  return basePrompt(sid, no);
+}
+
 function stash(sid, field, value) {
   const cur = dirty.get(sid) || {};
   cur[field] = value;
   dirty.set(sid, cur);
+  updateSaveAll();
+}
+
+function stashPrompt(sid, no, value) {
+  const cur = dirty.get(sid) || {};
+  cur.prompts = cur.prompts || {};
+  if (value === basePrompt(sid, no)) delete cur.prompts[no];
+  else cur.prompts[no] = value;
+  if (!Object.keys(cur.prompts).length) delete cur.prompts;
+  if (cur.title === undefined && cur.body === undefined && !cur.prompts) dirty.delete(sid);
+  else dirty.set(sid, cur);
   updateSaveAll();
 }
 
@@ -262,13 +366,37 @@ function updateSaveAll() {
   b.classList.toggle('pri', n > 0);
 }
 
+/* 切换要编辑哪一张图的提示词；切换前先把当前输入存进 dirty */
+function switchFig(sid, no) {
+  const box = document.querySelector(`#sec-${sid} .fields`);
+  if (!box) return;
+  const ta = box.querySelector('.ta-prompt');
+  if (ta.dataset.no !== String(no)) stashPrompt(sid, ta.dataset.no, ta.value);
+  ta.dataset.no = no;
+  ta.value = promptOf(sid, no);
+  box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.no === String(no)));
+  box.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === 'prompt'));
+  ta.style.display = '';
+  box.querySelector('.ta-body').style.display = 'none';
+  const st = box.querySelector('.struct');
+  st.style.display = 'none';
+  ta.scrollIntoView({ block: 'nearest' });
+}
+
 async function saveSec(sid) {
   const cur = dirty.get(sid);
   if (!cur) { toast('没有改动'); return; }
-  await api('/api/section/' + sid, cur);
+  const payload = {};
+  if (cur.title !== undefined) payload.title = cur.title;
+  if (cur.body !== undefined) payload.body = cur.body;
+  if (cur.prompts) payload.prompts = cur.prompts;
+  await api('/api/section/' + sid, payload);
   const s = findSec(sid);
   if (cur.title) s.title = cur.title;
-  if (cur.prompt) s.prompt = cur.prompt;
+  for (const [no, txt] of Object.entries(cur.prompts || {})) {
+    const f = findFig(sid, no);
+    if (f) { f.prompt = txt; f.custom = true; }
+  }
   if (cur.body !== undefined) {
     const heads = s.blocks.filter(b => b.kind === 'heading');
     const body = cur.body.split(/\n{2,}/).map(t => t.trim()).filter(Boolean)
@@ -283,42 +411,54 @@ async function saveSec(sid) {
 }
 
 async function saveAll() {
+  document.querySelectorAll('textarea[data-f="prompt"]').forEach(ta =>
+    stashPrompt(ta.dataset.s, ta.dataset.no, ta.value));
   for (const sid of [...dirty.keys()]) await saveSec(sid);
-  await load();
+  await reloadKeepScroll();
 }
 
 async function resetSec(sid) {
-  if (!confirm('撤销该节的全部编辑，恢复原文？')) return;
+  if (!confirm('撤销该节的标题与正文编辑，恢复原文？（图位提示词不受影响）')) return;
   await api(`/api/section/${sid}/reset`, {});
   dirty.delete(sid);
   updateSaveAll();
-  await load();
+  await reloadKeepScroll();
   toast(sid + ' 已还原');
 }
 
-async function regen(sid) {
-  const cur = dirty.get(sid);
-  if (cur) await saveSec(sid);
-  await api(`/api/section/${sid}/regen`, {});
-  toast('已提交生成：' + sid);
+async function regen(sid, no) {
+  if (dirty.get(sid)) await saveSec(sid);
+  await api(`/api/section/${sid}/regen`, { fig: +no });
+  toast(`已提交生成：${sid} 图${no}`);
   startPoll();
 }
 
-function startPoll() {
+async function replan(sid) {
+  if (dirty.size) await saveAll();
+  await api('/api/replan', sid ? { section: sid } : {});
+  toast(sid ? `已提交重规划：${sid}` : '已提交全册重规划');
+  startPoll();
+}
+
+async function reloadKeepScroll() {
+  const m = $('#doc'), y = m.scrollTop;
+  await load();
+  m.scrollTop = y;
+}
+
+async function startPoll() {
   if (polling) return;
+  try { lastMsg = (await api('/api/status')).msg || ''; } catch (e) { lastMsg = ''; }
   polling = setInterval(async () => {
     try {
       const st = await api('/api/status');
       $('#statustxt').textContent = st.running ? (st.msg || '处理中…') : '就绪';
       $('#dot').classList.toggle('on', !!st.running);
-      if (!st.running && st.msg && st.msg.includes('完成')) {
+      if (!st.running && st.msg && st.msg !== lastMsg && /完成|失败/.test(st.msg)) {
+        lastMsg = st.msg;
         clearInterval(polling); polling = null;
-        const s = findSec(st.section);
-        if (s && s.image) {
-          const im = document.querySelector(`#sec-${st.section} .imgbox img`);
-          if (im) im.src = s.image + '?t=' + Date.now();
-          else await load();
-        }
+        $('#statustxt').textContent = st.msg;
+        await reloadKeepScroll();
       }
     } catch (e) { clearInterval(polling); polling = null; }
   }, 2500);
@@ -327,6 +467,7 @@ function startPoll() {
 /* ---------------- 事件 ---------------- */
 $('#srch').oninput = renderTree;
 $('#saveall').onclick = saveAll;
+$('#replan').onclick = () => replan(null);
 $('#zoom').onclick = () => $('#zoom').style.display = 'none';
 $('#rebuild').onclick = async () => {
   await saveAll();

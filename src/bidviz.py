@@ -11,9 +11,12 @@ import json
 import os
 import re
 import shutil
+import socket
 import sys
 import textwrap
+import ipaddress
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -358,6 +361,60 @@ def pideck_image_config(provider_name: str | None = None, model: str | None = No
         raise BidVizError(str(exc)) from None
 
 
+_ALLOWED_SCHEMES = ("http", "https")
+
+
+def _private_endpoints_allowed() -> bool:
+    """用户显式声明本机/内网生图供应商（LocalAI、A1111 等）时的逃生口。"""
+    return os.getenv("BIDVIZ_ALLOW_PRIVATE_ENDPOINTS", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _assert_safe_url(url: str) -> str:
+    """网络出口校验（SSRF 加固）：协议白名单 + 主机解析 + IP 边界检查。
+
+    - 仅允许 http/https，拦截 file://、ftp://、gopher:// 等协议注入；
+    - 解析主机名并逐一校验 IP：私网/环回/链路本地/保留/组播/未指定地址一律拒绝
+      （响应体回传的 URL 属外部输入，不经此校验不得发起请求）；
+    - 本机/内网供应商由 BIDVIZ_ALLOW_PRIVATE_ENDPOINTS=1 显式放行。
+    校验通过返回原 URL。
+    """
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+        raise BidVizError(f"拒绝非 http(s) 请求目标：{url[:80]}")
+    host = parsed.hostname
+    if not host:
+        raise BidVizError(f"请求目标缺少主机名：{url[:80]}")
+    if _private_endpoints_allowed():
+        return url
+    port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as exc:
+        raise BidVizError(f"请求目标主机无法解析：{host}（{exc}）") from None
+    for info in infos:
+        addr = ipaddress.ip_address(info[4][0])
+        if (addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved
+                or addr.is_multicast or addr.is_unspecified):
+            raise BidVizError(
+                f"请求目标解析到内网/保留地址（{host} → {addr}）；"
+                "本机或内网供应商请设 BIDVIZ_ALLOW_PRIVATE_ENDPOINTS=1")
+    return url
+
+
+class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """重定向目标复用同一套出口校验，防经 3xx 跳转绕过。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):   # noqa: D102
+        _assert_safe_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _safe_open(req: urllib.request.Request, timeout: float):
+    """唯一网络出口：先 _assert_safe_url，再经限制重定向的 opener 发请求。"""
+    _assert_safe_url(req.full_url)
+    return urllib.request.build_opener(_ValidatingRedirectHandler).open(req, timeout=timeout)
+
+
 class ImageAPI:
     def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None, provider_name: str | None = None):
         env_base = os.getenv("BIDVIZ_BASE_URL") or os.getenv("CUSTOM_IMAGE_API_BASE")
@@ -386,7 +443,7 @@ class ImageAPI:
         base = self.base_url[:-len("/images/generations")] if self.base_url.endswith("/images/generations") else self.base_url
         req = urllib.request.Request(base.rstrip("/") + "/models", headers={"Authorization": f"Bearer {self.api_key}"})
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with _safe_open(req, 30) as resp:
                 payload = json.load(resp)
         except urllib.error.HTTPError as exc:
             raise BidVizError(f"模型探测 HTTP {exc.code}") from None
@@ -415,7 +472,7 @@ class ImageAPI:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=240) as resp:
+            with _safe_open(req, 240) as resp:
                 data = json.load(resp)
         except urllib.error.HTTPError as exc:
             raw = exc.read().decode("utf-8", "replace")
@@ -433,7 +490,9 @@ class ImageAPI:
         if item.get("b64_json"):
             content = base64.b64decode(item["b64_json"])
         elif item.get("url"):
-            with urllib.request.urlopen(item["url"], timeout=120) as resp:
+            # 响应体回传的 URL 属外部输入：必须走同一出口校验（scheme + IP 边界）
+            dl = urllib.request.Request(item["url"], headers={"User-Agent": "bidviz/0.1"})
+            with _safe_open(dl, 120) as resp:
                 content = resp.read()
         else:
             raise BidVizError("响应没有 b64_json 或 url")

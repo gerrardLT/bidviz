@@ -1,0 +1,62 @@
+# bidviz V1.3 Visual Tokens（Toml for stdlib only）
+# 签认版本：v1.0 —— 已签（签认点①，2026-10-16 随阶段 2 样板页签认一并确认；
+# 哈希与签认记录见 projects/anke-35kv/work/frozen.json）。改本文件必须回签认点①重签。
+# 
+# 说明：使用报告级调色板 + 字号阶梯 + 间隙阶梯 + 组件规格，
+# 供 bidviz_templates.py 统一引用；所有颜色值必须与样图颜色量测一致。
+
+[palette]
+# 主色板（工程蓝 + 警示红 + 黑白灰中性）——来自样式配置映射
+header_bg = "#1f4e79"          # 深蓝表头（原 TABLE_ACCENT）
+header_text = "#ffffff"        # 白字
+text_main = "#1a2c38"          # 深灰正文
+muted = "#5a6e7c"              # 灰色提示
+border = "#c1d0d9"             # 浅灰分隔线
+accent_blue = "#1f4e79"        # 强调蓝（用于页眉、题注）
+warn_red = "#c0392b"           # 警示红（预留）
+row_alt_light = "#f8fbfd"      # 浅灰行底纹
+
+[typography]
+# 字号阶梯（A3 打印舒适区）
+title_h1 = 15.0                # 章标题
+title_h2 = 13.0                # 节标题  
+table_header = 9.5             # 表格表头加粗
+normal = 9.5                   # 正文默认
+small = 8.4                    # 报表单元格小字
+caption = 9.5                  # 图注/表题
+footer = 7.5                   # 页脚
+page_no = 7.5                  # 页码
+
+[line_spacing]
+leading_body = 13.8            # 正文行高 (≈ normal*1.45)
+leading_table = 13.2           # 表格行高 (≈ small*1.5)
+leading_caption = 11.5         # 图注行高
+
+[spacing]
+# 间隙阶梯（pt）
+margin_x = 72.0                # 左右边距 ≈ 25.4mm×2.8346
+margin_top = 82.0              # 上边距（含页眉占位）
+margin_bottom = 62.0           # 下边距（含页脚占位）
+gap_col = 22.6                 # 双栏间距 ≈ 8mm
+gap_row = 14.2                 # 表格行间距
+gap_kpi_card = 16.0            # KPI 卡间距
+gap_callout = 8.0              # 编号白片间距
+
+[components]
+# KPI 卡尺寸（单位 pt）
+kpi_w = 180.0                  # KPI 卡宽（三个等分时每卡宽度）
+kpi_h = 50.0                   # KPI 卡高
+callout_w = 24.0               # 编号白片宽
+callout_h = 14.0               # 编号白片高
+chevron_w = 220.0              # chevron 卡片宽
+chevron_h = 60.0               # chevron 卡片高
+icon_cell_w = 30.0             # 图标列表格中图标列宽
+
+[gate]
+# 乱度门禁阈值（按样图风标定）
+max_fill_blocks_per_page = 35  # 填充色块数上限
+max_color_variety = 5          # 不同填充色种数上限
+# 左边界带数上限（x0 经 ±3pt 聚类后计数）。
+# 标定来源：T-B1 样板页实测 26 带（多栏组件化版式：标题/KPI×3/叠标×4/正文/引用/图标表×3/页脚），
+# 留 +2 余量；旧报表式实测 13 带。栏式版式的带数=栏数（设计决策），散乱约束主要由 fill/colors 承担。
+max_left_boundary_count = 28   # 左边界离散度（聚类后 x0 带数）上限

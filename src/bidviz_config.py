@@ -48,6 +48,28 @@ DEFAULTS: dict = {
         "concurrency": 1,
         "retries": 3,
         "pause": 1.5,
+        # 每张规划图可单独换供应商/模型/尺寸（第 1 张与第 2 张不必用同一个生图 API）。
+        # 键可以是图序（"1"/"2"）或图型 key（layout_plan 等），图序优先。
+        # [image.figure_overrides]
+        # 1 = { provider = "grokimg", model = "gpt-image-2-2K/4K", size = "2048x1448" }
+        # 2 = { provider = "taomu",   model = "gpt-image-2.5",      size = "1536x1024" }
+        "figure_overrides": {},
+    },
+    "plan": {
+        # 每节最多画几张图。张数由内容体量与维度决定，不是固定槽位。
+        "max_figures": 2,
+        # 置 false 则每节只画一张主视觉。
+        "second_figure": True,
+        # 触发「再补一张图」的阈值，可被项目 toml 覆盖。
+        "thresholds": {
+            "chars": 2600,    # 本节正文字数
+            "items": 4,       # 三级分项（一、二、三…）数
+            "param": 8,       # 原文落地的参数句数
+            "mat": 10,        # 原文落地的材料设备条数
+            "layout": 6,      # 平面布置/运输组织词频
+            "time": 6,        # 阶段工期词频
+            "org": 4,         # 岗位职责词频
+        },
     },
     "style": {
         "palette": "power_grid_cyan_blue",
@@ -190,6 +212,24 @@ class Config:
     def pause(self) -> float:
         return float(_env("BIDVIZ_PAUSE") or self.raw["image"]["pause"])
 
+    @property
+    def figure_overrides(self) -> dict:
+        """按图序或图型覆盖生图供应商/模型/尺寸。"""
+        return self.raw["image"].get("figure_overrides", {}) or {}
+
+    # -- plan --
+    @property
+    def plan(self) -> dict:
+        return self.raw.get("plan", {}) or {}
+
+    @property
+    def max_figures(self) -> int:
+        return max(1, int(self.plan.get("max_figures", 2)))
+
+    @property
+    def second_figure(self) -> bool:
+        return bool(self.plan.get("second_figure", True))
+
     # -- style --
     @property
     def style(self) -> dict:
@@ -236,16 +276,19 @@ def reset() -> None:
 
 # ---------------------------------------------------------------- 供应商凭据
 
-def provider_credentials(name: str) -> dict:
+def provider_credentials(name: str, env_first: bool = True) -> dict:
     """按优先级取供应商凭据：环境变量 → ~/.bidviz/providers.toml → PiDeck imagegen.json。
 
     环境变量（推荐，给别人用时用这个）：
         BIDVIZ_BASE_URL     例如 https://api.yoshub.com
         BIDVIZ_API_KEY      sk-xxxxx
+
+    env_first=False 用于「显式指定了某个供应商」的场景（如按图位切换生图 API）：
+    此时先查 providers.toml / PiDeck 里那个供应商，找不到才回退全局环境变量。
     """
     base = _env("BIDVIZ_BASE_URL")
     key = _env("BIDVIZ_API_KEY")
-    if base and key:
+    if env_first and base and key:
         return {"name": name, "baseUrl": base, "apiKey": key, "referenceMode": "edits"}
 
     # 独立配置文件
@@ -276,6 +319,9 @@ def provider_credentials(name: str) -> dict:
                 "apiKey": hit["apiKey"],
                 "referenceMode": hit.get("referenceMode", "edits"),
             }
+
+    if base and key:
+        return {"name": name, "baseUrl": base, "apiKey": key, "referenceMode": "edits"}
 
     raise RuntimeError(
         f"找不到供应商 {name} 的凭据。请设置环境变量 BIDVIZ_BASE_URL / BIDVIZ_API_KEY，"

@@ -1,0 +1,253 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-10-16T16:40:48+08:00",
+  "project": "anke-35kv",
+  "summary": {
+    "total": 7,
+    "by_type": {
+      "ambiguous": 3,
+      "conflict": 1,
+      "missing-unit": 2,
+      "unfalsifiable-date": 1
+    },
+    "by_status": {
+      "open": 7
+    },
+    "open_blocking": 7
+  },
+  "issues": [
+    {
+      "id": "ISS-AMB-21a03112",
+      "rule": "ambiguous",
+      "type": "ambiguous",
+      "excerpt": "对预审中发现的资料偏差内容当场出具整改指引，在正式提交验收前完成全部修正工作， 避免因资料缺项、数据不符影响专项验收进度，保障本项目在合同约定的60 日历天工期内 顺利通过验收并完成送电",
+      "suggestion": "关键承诺「日历天」使用模糊限定「约」，请核实是否可量化。",
+      "locations": [
+        {
+          "section_path": "第六章 便利化服务方案 / 第六节 文档与培训便捷服务 / 四、专项验收资料预审服务",
+          "block_id": "B-01467",
+          "source_page": 149,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "approx": "约",
+        "promise": "日历天"
+      }
+    },
+    {
+      "id": "ISS-AMB-5ef55efe",
+      "rule": "ambiguous",
+      "type": "ambiguous",
+      "excerpt": "不突破总工期60 日历天约束、不降低施工质量标准、不违规压缩必要养护与检测时长 的前提下，调整后续平行流水作业的资源配比，在具备条件的作业面适当增加作业班组开展 错峰施工作业，把滞后的工期逐步追回，确保整体施工最终可按时完成全部验收送电工作",
+      "suggestion": "关键承诺「总工期」使用模糊限定「约」，请核实是否可量化。",
+      "locations": [
+        {
+          "section_path": "第五章 工程重难点 / 第一节 工期紧任务重重难点应对 / 三、工序优化措施 / （五）工期偏差修正",
+          "block_id": "B-01092",
+          "source_page": 115,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "approx": "约",
+        "promise": "总工期"
+      }
+    },
+    {
+      "id": "ISS-AMB-6b2c78af",
+      "rule": "ambiguous",
+      "type": "ambiguous",
+      "excerpt": "严格执行故障处置时限要求，若我方运维人员未在规定时限内抵达现场开展消缺工作， 主动接受合同约定的相关约束条款",
+      "suggestion": "关键承诺「抵达现场」使用模糊限定「约」，请核实是否可量化。",
+      "locations": [
+        {
+          "section_path": "第八章 售后服务方案 / 第四节 事故应对方案 / 五、故障处置超时约束机制",
+          "block_id": "B-01771",
+          "source_page": 173,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "approx": "约",
+        "promise": "抵达现场"
+      }
+    },
+    {
+      "id": "ISS-CON-31016c04",
+      "rule": "conflict",
+      "type": "conflict",
+      "excerpt": "【复杂故障】处置时限在原文出现多种口径：复杂问题 1小时：…处置流程，一般作业问题由现场包保管理人员当场协调解决，涉及工序调 整、资源调度的复杂问题1 小时内提交指挥架构专项组研判，所有处置结果第一时间同步至 作业层执行，避免问题积压延… ｜ 复杂性问题 8小时：…障通知后2 小时内作业人员必须抵达现场开展消缺， 一般性故障4 小时内完成处置，复杂性故障8 小时内制定完整处置方案并启动实施，确保快 速恢复线路正常运行状态。",
+      "suggestion": "主题「复杂故障」处置时限存在 2 种口径（{'1小时': 1, '8小时': 2}）；原文用词：['复杂性问题', '复杂问题']。请业务决断统一。",
+      "locations": [
+        {
+          "section_path": "第二章 计划措施 / 第三节 工期保证措施 / 一、组织保障 / （三）现场问题响应",
+          "block_id": "B-00532",
+          "source_page": 56,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第六章 便利化服务方案 / 第五节 应急响应与故障处理 / 四、故障处置兜底执行规则",
+          "block_id": "B-01453",
+          "source_page": 148,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第八章 售后服务方案 / 第四节 事故应对方案 / 一、突发故障处置预案",
+          "block_id": "B-01756",
+          "source_page": 172,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "topic": "复杂故障",
+        "variants": {
+          "1小时": 1,
+          "8小时": 2
+        },
+        "raw_topics": [
+          "复杂性问题",
+          "复杂问题"
+        ]
+      }
+    },
+    {
+      "id": "ISS-MIS-73fa0099",
+      "rule": "missing-unit",
+      "type": "missing-unit",
+      "excerpt": "…量放线定位、绿化 移栽铲除及路面破复准备等前置工作，结合坡面挂网喷C25 混凝土60 厚的放坡支护要求同 步落实土方开挖安全防护，规避沟槽坍塌等风险，同步完成利旧老旧电…",
+      "suggestion": "数值 60厚 缺明确单位（应为 60 mm/60 cm/60 m 之一），请核对原文补充。",
+      "locations": [
+        {
+          "section_path": "第三章 实施方案和质量保证措施 / 第一节 项目总体实施方案 / 一、35kV 电源接入整体实施策略",
+          "block_id": "B-00593",
+          "source_page": 63,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "num": "60",
+        "dim": "厚"
+      }
+    },
+    {
+      "id": "ISS-MIS-e643ccd4",
+      "rule": "missing-unit",
+      "type": "missing-unit",
+      "excerpt": "…坡面防护前置措施，作业面挖出一段即清理一段坡面浮土，为后续挂 网喷C25 混凝土60 厚的放坡支护工序预留充足作业空间，坡面坡度全程按规范要求控制， 随时排查边坡开裂、…",
+      "suggestion": "数值 60厚 缺明确单位（应为 60 mm/60 cm/60 m 之一），请核对原文补充。",
+      "locations": [
+        {
+          "section_path": "第一章 供货安装方案与技术措施 / 第二节 土石方工程施工 / 一、土石方开挖及回填 / （一）电缆沟井排管土方开挖作业实施",
+          "block_id": "B-00054",
+          "source_page": 7,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "num": "60",
+        "dim": "厚"
+      }
+    },
+    {
+      "id": "ISS-UNF-3c044aeb",
+      "rule": "unfalsifiable-date",
+      "type": "unfalsifiable-date",
+      "excerpt": "原文出现总工期口径 ['60日历天']（共 18 处），但没有任何一段同时给出具体的日历日期锚点（YYYY 年 MM 月 [DD 日] 或 MM 月 DD 日）。",
+      "suggestion": "总工期缺具体起始日历日期锚点，无法推出交付日期与横道图；请补入合同签订日/开工日的具体日历日期，或明确以招标文件给定日期为准。",
+      "locations": [
+        {
+          "section_path": "第二章 计划措施 / 第一节 劳动力与资源投入计划 / 一、分阶段劳动力配置 / （一）土建施工人员排布",
+          "block_id": "B-00384",
+          "source_page": 40,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第二章 计划措施 / 第三节 工期保证措施 / 一、组织保障 / （一）现场指挥体系",
+          "block_id": "B-00515",
+          "source_page": 55,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第二章 计划措施 / 第三节 工期保证措施 / 二、技术保障 / （一）施工方案优化",
+          "block_id": "B-00544",
+          "source_page": 57,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第二章 计划措施 / 第三节 工期保证措施 / 三、资源保障 / （二）应急人员机械预留",
+          "block_id": "B-00566",
+          "source_page": 59,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第二章 计划措施 / 第三节 工期保证措施 / 四、协调沟通 / （四）流程等待规避",
+          "block_id": "B-00588",
+          "source_page": 62,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第三章 实施方案和质量保证措施 / 第四节 质量保证体系建立 / 二、质量管理组织架构",
+          "block_id": "B-00742",
+          "source_page": 79,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第四章 安全文明施工管理体系与措施 / 第一节 安全文明施工管理目标 / 一、安全施工零事故目标",
+          "block_id": "B-00834",
+          "source_page": 88,
+          "chapter": "",
+          "section_id": ""
+        },
+        {
+          "section_path": "第四章 安全文明施工管理体系与措施 / 第一节 安全文明施工管理目标 / 二、现场管控总体指标",
+          "block_id": "B-00836",
+          "source_page": 88,
+          "chapter": "",
+          "section_id": ""
+        }
+      ],
+      "status": "open",
+      "decided_by": "",
+      "decided_at": "",
+      "evidence": {
+        "labels": [
+          "60日历天"
+        ],
+        "hit_count": 18
+      }
+    }
+  ]
+}

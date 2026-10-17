@@ -1,0 +1,21 @@
+{
+  "pdf_name": "_样板-S003.pdf",
+  "tokens_path": "docs\\layout-md\\tokens.toml",
+  "threshold_max_fill": 35,
+  "threshold_max_colors": 5,
+  "threshold_max_x0": 28,
+  "pages": [
+    {
+      "page_no": 1,
+      "fill_blocks": 21,
+      "fill_color_variety": 4,
+      "distinct_x0_count": 26,
+      "max_line_in_cluster": 8,
+      "passed": true
+    }
+  ],
+  "total_fill_blocks": 21,
+  "total_color_variety": 4,
+  "failed_pages": [],
+  "overall_passed": true
+}

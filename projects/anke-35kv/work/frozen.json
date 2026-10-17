@@ -1,0 +1,41 @@
+{
+  "schema": "bidviz-frozen-ledger/1.0",
+  "updated_at": "2026-10-17T07:41:16+08:00",
+  "signoffs": {
+    "1_tokens": {
+      "status": "signed",
+      "signed_at": "2026-10-17T07:41:16+08:00",
+      "note": "随阶段2样板页签认一并确认（样板页配色/字号全部取自 tokens v1.0）",
+      "path": "docs/layout-md/tokens.toml",
+      "sha256": "358e8ecb2abc7cc567b01bf87214b9d34ad4f456357a62a8d7bf3fcfa7197f6d",
+      "version": "v1.0"
+    },
+    "2_golden_page_S003": {
+      "status": "signed",
+      "signed_at": "2026-10-17T07:41:16+08:00",
+      "note": "用户确认阶段2完成；T-B1 版式冻结为 golden page",
+      "page_plan": {
+        "path": "projects/anke-35kv/work/page-plan.json",
+        "sha256": "94198b8c432a6feb4d087bd9e9f29666b3bd7628972a1597372426f8a668a847"
+      },
+      "pdf": {
+        "path": "projects/anke-35kv/output/_样板-S003.pdf",
+        "sha256": "cbadd778f85df07f21b18ebcd99059df5f72ffc7a6b6d9015154223cc2e14401",
+        "pixel_sha256_dpi100": "13974cc5637aac598f3d0624b009aa268eea57afe84b1d72a34f08a78666aa0a",
+        "note": "byte sha256 含 reportlab 时间戳不可复现；复现校验以 pixel_sha256_dpi100 为准"
+      },
+      "template": "T-B1",
+      "gates": {
+        "layout": "pass(fill21/colors4/x0-26)",
+        "hidden_layer": "ok(4/4)",
+        "coverage": "100%"
+      }
+    }
+  },
+  "pending": [
+    "3_template_batch(签认点③)",
+    "4_style_seed(签认点④)",
+    "5_source_assets(签认点⑤)",
+    "6_final(签认点⑥)"
+  ]
+}

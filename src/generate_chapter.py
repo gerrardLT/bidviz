@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""用 gpt-image-2 以 2K（2048x1448，A3 比例）生成指定章节的全部节主视觉。
+"""按图位规划逐张生图：每节 1~N 张主图，每张可以走不同的生图 API。
+
+规划由 bidviz_plan 产出并落盘 work/figure-plan.json（可人工审改）；本脚本只负责
+按规划花钱生图，并把结果记进 work/generation-figures.json，按「节#图序」去重，
+因此中断后重跑会自动跳过已生成的图。
 
 用法:
-    python generate_chapter.py --chapter 第一章
-    python generate_chapter.py --chapter 第一章 --model gpt-image-2 --size 2048x1448
+    python generate_chapter.py --all                        # 整册
+    python generate_chapter.py --chapter 第一章              # 只跑某一章
+    python generate_chapter.py --section S006,S012          # 只跑指定节
+    python generate_chapter.py --section S012 --fig 2 --force
+    python generate_chapter.py --all --dry-run              # 只看提示词与生图参数
 """
 from __future__ import annotations
 
@@ -13,13 +20,16 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-import bidviz
 import bidviz_e1 as e1
+import bidviz_plan as plan
 from bidviz_config import load as _load_cfg, get as _cfg
 import build_e1 as be
+
+LEDGER = "generation-figures.json"
 
 
 def chapter_of_sections(root: Path):
@@ -51,92 +61,172 @@ def chapter_of_sections(root: Path):
     return out, {s.section_id: s for s in sections}
 
 
-def build_prompt(vis) -> str:
-    """原始宏观提示词：给事实 + 视觉标准，让模型自主排版。"""
-    facts = "；".join(b.text for b in vis.blocks[:12] if b.kind != "heading")[:1400]
-    return "\n".join([
-        f"为{_cfg().prompt_subject}生成：轴测爆炸分解图，构件按施工层级拆开悬浮，表现分层工艺与装配关系。",
-        f"本页主题：{vis.title}。",
-        f"必须依据以下实际文字内容，不得添加冲突的工艺与参数：{facts}",
-        "视觉标准：专业工程技术图，尺度感真实，构件边缘清楚，灰蓝主色，安全风险用红橙。",
-        "需要在图中直接生成简短中文构件名与实际情况引线标注；不得生成长段正文，不得虚构未给出的精确尺寸。",
-        "所有标注使用规范简体中文；若无法正确生成文字则省略该标签，不得产生乱码、错别字、Logo 或水印。",
-        "无 CAD、BIM 模型或现场照片，本图为文字约束的通用工程示意，不得暗示真实坐标。",
-        "A3 横向构图，主体居中，四周留出自然空白。",
-    ])
+def target_sections(root: Path, chapter: str | None, section: str | None) -> tuple[list[str], str]:
+    """解析范围参数，返回（节 id 列表, 范围描述）。"""
+    chapmap, secs = chapter_of_sections(root)
+    if section:
+        wanted = {x.strip().upper() for x in section.split(",") if x.strip()}
+        ids = [sid for sid in secs if sid.upper() in wanted]
+        if not ids:
+            raise SystemExit(f"未找到指定节：{section}")
+        return ids, f"指定 {len(ids)} 节"
+    if chapter:
+        target = next((k for k in chapmap if chapter in k), None)
+        if not target:
+            print("可用章节:")
+            for k, v in chapmap.items():
+                print(f"  {k}  ({len(v)} 节)")
+            raise SystemExit(f"未找到章节: {chapter}")
+        return chapmap[target], target
+    return [sid for v in chapmap.values() for sid in v], "（全部章节）"
+
+
+def ledger_path(root: Path) -> Path:
+    return root / "work" / LEDGER
+
+
+def load_ledger(root: Path) -> dict[str, Any]:
+    p = ledger_path(root)
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_ledger(root: Path, led: dict[str, Any]) -> None:
+    p = ledger_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(led, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def figure_progress(root: Path) -> dict[str, Any]:
+    """规划了多少张图、已落地多少张（供 status / Web 显示）。
+
+    「已生成」以图片文件为准，因此旧管线生的图也算数；台账只用来报失败。
+    """
+    secs = (plan.load_plan(root) or {}).get("sections") or {}
+    led = load_ledger(root)
+    planned = done = 0
+    kinds: dict[str, int] = {}
+    for sid, entry in secs.items():
+        figs = entry.get("figures", [])
+        imgs = plan.resolve_images(root, sid, figs)
+        for f in figs:
+            no = int(f.get("no", 1))
+            kind = f.get("kind", "?")
+            planned += 1
+            kinds[kind] = kinds.get(kind, 0) + 1
+            if imgs.get(no) or led.get(f"{sid}#{no}", {}).get("ok"):
+                done += 1
+    return {"sections": len(secs), "planned": planned, "generated": done,
+            "failed": sum(1 for v in led.values() if not v.get("ok")),
+            "kinds": dict(sorted(kinds.items(), key=lambda kv: -kv[1]))}
+
+
+def generate_figures(root: Path, ids: list[str], fig_no: int | None = None,
+                     force: bool = False, outdir: str | None = None, attempts: int = 3,
+                     pause: float | None = None, dry_run: bool = False,
+                     limit: int | None = None) -> dict[str, Any]:
+    """按规划逐张生图。生图参数以当前配置为准（[image.figure_overrides] 可按图序/图型分流）。"""
+    plan.ensure_plan(root)                      # 正文变过的节自动重算提示词
+    secs = (plan.load_plan(root) or {}).get("sections", {})
+    out_dir = root / "work" / (outdir or _cfg().image_dir.name)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    led = load_ledger(root)
+    pause = _cfg().pause if pause is None else pause
+
+    todo: list[tuple[str, int, dict]] = []
+    for sid in ids:
+        for f in secs.get(sid, {}).get("figures", []):
+            no = int(f.get("no", 1))
+            if fig_no and no != fig_no:
+                continue
+            todo.append((sid, no, f))
+    if limit:
+        todo = todo[:limit]
+
+    apis: dict[tuple[str, str], Any] = {}
+    ok = fail = skip = 0
+    for n, (sid, no, f) in enumerate(todo, 1):
+        kind = f.get("kind") or plan.DEFAULT_KIND
+        g = plan.gen_config(no, kind)           # 现算，避免规划落盘后改了配置不生效
+        out = out_dir / plan.figure_filename(sid, no)
+        tag = f"[{n}/{len(todo)}] {sid} 图{no} {kind}"
+        if out.exists() and out.stat().st_size > 2000 and not force:
+            skip += 1
+            print(f"{tag} 已存在，跳过", flush=True)
+            continue
+        if dry_run:
+            print(f"{tag} dry-run provider={g['provider']} model={g['model']} size={g['size']} "
+                  f"提示词 {len(f.get('prompt', ''))} 字 custom={bool(f.get('custom'))}", flush=True)
+            continue
+
+        rec: dict[str, Any] = {
+            "section_id": sid, "no": no, "kind": kind, "name": f.get("name"),
+            "provider": g["provider"], "model": g["model"], "size": g["size"],
+            "custom": bool(f.get("custom")), "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        key = (g["provider"], g["model"])
+        api = apis.get(key)
+        if api is None:
+            apis[key] = api = plan.make_api({**f, "gen": g})
+        last, done, attempt = "", False, 0
+        t0 = time.time()
+        for attempt in range(1, attempts + 1):
+            try:
+                api.generate(f.get("prompt", ""), out, recorder=rec, size=g["size"])
+                done = True
+                break
+            except Exception as exc:            # 生图接口会间歇性断连，指数退避重试
+                last = f"{type(exc).__name__}: {exc}"[:200]
+                if attempt < attempts:
+                    time.sleep(pause * (2 ** (attempt - 1)))
+        rec.update({"ok": done, "attempts": attempt, "sec": round(time.time() - t0, 1)})
+        if done:
+            rec["kb"] = round(out.stat().st_size / 1024)
+            rec.pop("error", None)
+            ok += 1
+        else:
+            rec["error"] = last
+            fail += 1
+        led[f"{sid}#{no}"] = rec
+        save_ledger(root, led)
+        print(f"{tag} {'OK' if done else 'FAIL'} {rec.get('kb', '')}KB {rec['sec']}s "
+              f"attempts={attempt} {last}", flush=True)
+        time.sleep(pause)
+
+    return {"planned": len(todo), "generated": ok, "skipped": skip, "failed": fail,
+            "dry_run": dry_run, "out_dir": str(out_dir)}
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="projects/anke-35kv")
     ap.add_argument("--chapter", default=None, help="只跑某一章（模糊匹配）")
+    ap.add_argument("--section", default=None, help="只跑指定节，如 S006 或 S006,S012")
+    ap.add_argument("--fig", type=int, default=None, help="只跑每节的第几张图（1/2）")
     ap.add_argument("--all", action="store_true", help="跑全部章节")
-    ap.add_argument("--provider", default=None, help="默认读 bidviz.toml")
-    ap.add_argument("--model", default=None, help="默认读 bidviz.toml")
-    ap.add_argument("--size", default=None, help="默认读 bidviz.toml")
-    ap.add_argument("--outdir", default=None, help="输出子目录名，默认 visuals-2k")
-    ap.add_argument("--force", action="store_true")
+    ap.add_argument("--limit", type=int, default=None, help="最多生几张（试跑用）")
+    ap.add_argument("--outdir", default=None, help="输出子目录名，默认取 [image].dir")
+    ap.add_argument("--attempts", type=int, default=3)
+    ap.add_argument("--pause", type=float, default=None)
+    ap.add_argument("--force", action="store_true", help="已有图也重生")
+    ap.add_argument("--dry-run", action="store_true", help="只打印提示词与生图参数，不调 API")
     args = ap.parse_args()
 
     root = Path(args.root)
-    _load_cfg(root)                       # 载入项目配置
-    chapmap, secs = chapter_of_sections(root)
+    _load_cfg(root)
+    ids, target = target_sections(root, args.chapter, args.section)
+    print(f"范围: {target}  共 {len(ids)} 节   输出: {root / 'work'}", flush=True)
 
-    if args.all or not args.chapter:
-        target = "（全部章节）"
-        ids = [sid for v in chapmap.values() for sid in v]
-    else:
-        target = next((k for k in chapmap if args.chapter in k), None)
-        if not target:
-            print("可用章节:")
-            for k, v in chapmap.items():
-                print(f"  {k}  ({len(v)} 节)")
-            raise SystemExit(f"未找到章节: {args.chapter}")
-        ids = chapmap[target]
-
-    provider = args.provider or _cfg().provider
-    model = args.model or _cfg().model
-    size = args.size or _cfg().image_size
-    out_dir = root / "work" / (args.outdir or _cfg().image_dir.name)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    log_path = root / "work" / "generation-chapter.json"
-    log = json.loads(log_path.read_text(encoding="utf-8")) if log_path.exists() else []
-
-    print(f"章节: {target}  共 {len(ids)} 节  模型={model}  尺寸={size}", flush=True)
-    print(f"供应商: {provider}   输出: {out_dir}", flush=True)
-
-    ok = fail = skip = 0
-    for n, sid in enumerate(ids, 1):
-        sec = secs[sid]
-        vis = sec.as_visual_item()
-        f = out_dir / f"{sid}.png"
-        if f.exists() and not args.force and f.stat().st_size > 2000:
-            skip += 1
-            print(f"[{n}/{len(ids)}] {sid} 已存在，跳过", flush=True)
-            continue
-
-        rec = {"section_id": sid, "title": vis.title, "chapter": target,
-               "model": model, "size": size}
-        print(f"[{n}/{len(ids)}] {sid} {vis.title} ...", end=" ", flush=True)
-        t0 = time.time()
-        try:
-            api = bidviz.ImageAPI(provider_name=provider, model=model)
-            api.generate(build_prompt(vis), f, recorder=rec, size=size)
-            rec.update({"ok": True, "sec": round(time.time() - t0, 1),
-                        "kb": round(f.stat().st_size / 1024)})
-            ok += 1
-            print(f"OK {rec['kb']}KB {rec['sec']}s", flush=True)
-        except Exception as exc:
-            rec.update({"ok": False, "error": str(exc)[:300], "sec": round(time.time() - t0, 1)})
-            fail += 1
-            print(f"FAIL {str(exc)[:120]}", flush=True)
-
-        log.append(rec)
-        log_path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
-        time.sleep(_cfg().pause)
-
-    print(f"\n完成: 生成 {ok}  跳过 {skip}  失败 {fail}", flush=True)
-    print(f"输出目录: {out_dir}", flush=True)
+    t0 = time.time()
+    stat = generate_figures(root, ids, fig_no=args.fig, force=args.force, outdir=args.outdir,
+                            attempts=args.attempts, pause=args.pause, dry_run=args.dry_run,
+                            limit=args.limit)
+    print(f"\n完成: {stat}  耗时 {round(time.time() - t0, 1)}s", flush=True)
 
 
 if __name__ == "__main__":

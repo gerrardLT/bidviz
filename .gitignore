@@ -6,20 +6,43 @@ _*verify*.pdf
 _smoke*.pdf
 .venv/
 venv/
+.pip-cache/
 
 # 密钥
 .env
 providers.toml
 
 # 项目数据（体积大，不入库；只保留配置与输入）
-projects/*/work/
-projects/*/output/
+# 注意：work/ 与 output/ 用 /* 形式忽略，以便下方白名单放行决策件与签认产物
+projects/*/work/*
+projects/*/output/*
 projects/*/inputs/*
 !projects/*/inputs/.gitkeep
 
+# 决策件白名单（人工决断/签认产物，不可再生，必须入库）
+!projects/*/work/page-plan.json
+!projects/*/work/frozen.json
+!projects/*/work/issues.json
+!projects/*/work/figure-plan.json
+!projects/*/work/edits.json
+!projects/*/work/source-tables.json
+!projects/*/work/source-assets.json
+!projects/*/work/layout-classification.json
+!projects/*/work/classification.md
+
 # 临时
 _vectest/
+_*.png
+_*.pdf
 *.log
 ~$*
 .DS_Store
 Thumbs.db
+
+# 本地工具状态（mimosa 安全扫描插件的会话快照，机器本地，不入库）
+.mimosa/
+
+# golden page 签认产物白名单（签认点②冻结件；必须放在 _*.png/_*.pdf 之后，最后匹配获胜）
+!projects/*/output/_样板-S003.pdf
+!projects/*/output/_样板-S003-contact-sheet.png
+!projects/*/output/audit-layout-S003.json

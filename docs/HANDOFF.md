@@ -1,5 +1,8 @@
 # BidViz 交付与适配清单
 
+> **跨会话续跑 / 换 agent 接手：先读 `docs/PROGRESS.md`**（阶段状态总表、验证命令、下一步任务、踩坑记录）。
+> 本文件只描述交付形态与适配条件；重构执行规划见 `docs/重构任务规划-V1.3.md`。
+
 ## 推荐交付形式
 
 交付 **Git 仓库或版本压缩包**，内含 Python CLI、本地 Web 编辑器和可选 Skill：
@@ -79,18 +82,17 @@ copy .env.example .env
 - 服务账户、无桌面会话、Office 弹窗和文档损坏均可能导致 COM 失败。
 - 云端部署宜要求用户先上传 PDF，或另接 LibreOffice/headless 转换；当前不应把 Word COM 服务化。
 
-## 当前验收证据
+## 当前验收证据（2026-10-16 更新）
 
-安科项目于迁移后实测：
+> 系统重构进行中，执行规划见 `docs/重构任务规划-V1.3.md`，**阶段进度见 `docs/PROGRESS.md`（阶段 0/1/2 已完成）**。以下为**现状**证据：
 
-- PDF：`projects/anke-35kv/output/施工组织设计-图册-A3.pdf`
-- 183 页，A3 横向 `1190.55 × 841.89 pt`
-- 28.5 MB
-- 58 个视觉页均有图片
-- `S018`、`S028` 使用 `work/visuals/` 旧图回退
-- 反抽正文：1788/1788 文本块，120253 字，覆盖率 100%
-- Web：9 章、58 节；首页、文档 API、图片 API 均通过
-- CLI：editable install、`bidviz --help`、`bidviz status`、一节 smoke test 均通过
+- 主产物：`projects/anke-35kv/output/施工组织设计-图册-A3.pdf`＝旧全文版 183 页 / A3 横向 / 29.9MB（**待阶段 7 重跑为 A3 竖版新体系**）
+- 新体系 golden page：`output/_样板-S003.pdf`（A3 竖版 T-B1，签认点②已冻结，哈希见 `work/frozen.json`）
+- 提炼式对照：`output/_校验-报表式.pdf`＝116 页 / 1803 行提炼内容 0 缺失 / 覆盖率 100%
+- 主视觉：`work/visuals-2k-yoshub/` 56 张；S018/S028 回退旧目录
+- Web：9 章 58 节；/api/doc、/api/section、/api/hero、/api/build、/api/audit 均通过
+- CLI：`bidviz status/build/serve` 通过（阶段 0 已修 cmd_build 审计键 KeyError；pyproject 已补 bidviz_plan/bidviz_layout）
+- 旧大体积产物（含 348MB DRAFT）已按 D6 授权清理，output 降至约 71MB
 
 审计记录：`projects/anke-35kv/output/audit-vector.json`。
 

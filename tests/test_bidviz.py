@@ -95,9 +95,9 @@ class BidVizTests(unittest.TestCase):
             response.__exit__.return_value = False
             response.read.return_value = json.dumps({"data": [{"b64_json": image_bytes}]}).encode()
             record = {}
-            with patch.dict("os.environ", {"CUSTOM_IMAGE_API_BASE": "https://example.test/v1", "CUSTOM_IMAGE_API_KEY": "secret"}, clear=False), patch("urllib.request.urlopen", return_value=response) as urlopen:
+            with patch.dict("os.environ", {"CUSTOM_IMAGE_API_BASE": "https://example.test/v1", "CUSTOM_IMAGE_API_KEY": "secret"}, clear=False), patch.object(bidviz, "_safe_open", return_value=response) as safe_open:
                 bidviz.ImageAPI().generate("prompt", output, refs, recorder=record)
-            request = urlopen.call_args.args[0]
+            request = safe_open.call_args.args[0]
             body = json.loads(request.data)
             self.assertEqual(len(body["image"]), 2)
             self.assertEqual(request.headers["Authorization"], "Bearer secret")
