@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -88,34 +89,150 @@ def _section_blocks(root: Path, sid: str) -> list[tuple[str, str]]:
     return out
 
 
+_CN_NUM = "一二三四五六七八九十百"
+_PRIMARY_HEADING_RE = re.compile(rf"^[{_CN_NUM}]+[、.]\s*")
+_SECONDARY_HEADING_RE = re.compile(rf"^[（(][{_CN_NUM}0-9]+[）)]\s*")
+
+
+def _block_chars(blocks: list[tuple[str, str]]) -> int:
+    return sum(len(text) for _kind, text in blocks)
+
+
+def _split_chunk(blocks: list[tuple[str, str]], limit: int = SPLIT_CHARS) -> list[list[tuple[str, str]]]:
+    """仅在单一主题过长时按二级标题、最终按段落边界拆分。"""
+    if _block_chars(blocks) <= limit:
+        return [blocks]
+    secondary: list[list[tuple[str, str]]] = []
+    current: list[tuple[str, str]] = []
+    for block in blocks:
+        is_secondary = block[0] == "heading" and bool(_SECONDARY_HEADING_RE.match(block[1]))
+        if is_secondary and current and any(
+                kind == "heading" and _SECONDARY_HEADING_RE.match(text)
+                for kind, text in current):
+            secondary.append(current)
+            current = []
+        current.append(block)
+    if current:
+        secondary.append(current)
+    if len(secondary) > 1:
+        out: list[list[tuple[str, str]]] = []
+        for group in secondary:
+            out.extend(_split_chunk(group, limit))
+        return out
+
+    out, current, chars = [], [], 0
+    for block in blocks:
+        length = len(block[1])
+        if current and chars + length > limit:
+            out.append(current)
+            current, chars = [], 0
+        current.append(block)
+        chars += length
+    if current:
+        out.append(current)
+    return out
+
+
+def _semantic_chunks(blocks: list[tuple[str, str]]) -> list[list[tuple[str, str]]]:
+    """一级主题优先成组；开头的章标题/前言归入首个主题。"""
+    groups: list[list[tuple[str, str]]] = []
+    current: list[tuple[str, str]] = []
+    for block in blocks:
+        is_primary = block[0] == "heading" and bool(_PRIMARY_HEADING_RE.match(block[1]))
+        if is_primary and current and any(
+                kind == "heading" and _PRIMARY_HEADING_RE.match(text)
+                for kind, text in current):
+            groups.append(current)
+            current = []
+        current.append(block)
+    if current:
+        groups.append(current)
+    chunks: list[list[tuple[str, str]]] = []
+    for group in groups:
+        chunks.extend(_split_chunk(group))
+    return chunks
+
+
 def split_pages(blocks: list[tuple[str, str]]) -> list[list[tuple[str, str]]]:
-    """按块边界与字数把节内容分成 1–3 页。"""
-    total = sum(len(t) for _k, t in blocks)
+    """按一级/二级主题语义分页，保持块顺序且每块恰好出现一次。"""
+    blocks = list(blocks)
+    if not blocks:
+        return [[]]
+    total = _block_chars(blocks)
     n_pages = 1 if total <= SPLIT_CHARS else (2 if total <= SPLIT_CHARS * 2 else MAX_PAGES)
+    chunks = _semantic_chunks(blocks)
     if n_pages == 1:
         return [blocks]
-    pages: list[list[tuple[str, str]]] = [[] for _ in range(n_pages)]
-    budget = total / n_pages
-    acc = 0
-    idx = 0
-    for blk in blocks:
-        pages[idx].append(blk)
-        acc += len(blk[1])
-        if acc >= budget * 0.92 and idx < n_pages - 1:
-            idx += 1
-            acc = 0
-    return [p for p in pages if p]
+
+    pages: list[list[tuple[str, str]]] = []
+    current: list[tuple[str, str]] = []
+    remaining_chars = total
+    for chunk in chunks:
+        remaining_pages = n_pages - len(pages)
+        target = remaining_chars / max(1, remaining_pages)
+        chunk_chars = _block_chars(chunk)
+        if current and len(pages) < n_pages - 1 and _block_chars(current) + chunk_chars > target:
+            pages.append(current)
+            remaining_chars -= _block_chars(current)
+            current = []
+        current.extend(chunk)
+    if current:
+        pages.append(current)
+    while len(pages) > n_pages:
+        tail = pages.pop()
+        pages[-1].extend(tail)
+    return pages
 
 
-def _hierarchy(root: Path, sid: str) -> list[str]:
-    """章节层级三行（章 / 节 / 首个三级主题——对齐用户原始提示词格式）。"""
+def _page_start_index(all_blocks: list[tuple[str, str]], page_blocks: list[tuple[str, str]]) -> int:
+    if not page_blocks:
+        return 0
+    size = len(page_blocks)
+    for index in range(len(all_blocks) - size + 1):
+        if all_blocks[index:index + size] == page_blocks:
+            return index
+    return 0
+
+
+def page_topic(all_blocks: list[tuple[str, str]], page_blocks: list[tuple[str, str]],
+               page_index: int) -> str:
+    """返回本页实际主题；同主题承接页标“（续）”。"""
+    start = _page_start_index(all_blocks, page_blocks)
+    primary = ""
+    secondary = ""
+    for kind, text in all_blocks[:start]:
+        if kind == "heading" and _PRIMARY_HEADING_RE.match(text):
+            primary, secondary = text, ""
+        elif kind == "heading" and _SECONDARY_HEADING_RE.match(text):
+            secondary = text
+
+    page_primaries = [text for kind, text in page_blocks
+                      if kind == "heading" and _PRIMARY_HEADING_RE.match(text)]
+    page_primary = page_primaries[0] if page_primaries else ""
+    page_secondary = next((text for kind, text in page_blocks
+                           if kind == "heading" and _SECONDARY_HEADING_RE.match(text)), "")
+    if page_primary:
+        if len(page_primaries) > 1:
+            return " / ".join(page_primaries)
+        primary = page_primary
+        secondary = page_secondary
+        return f"{primary} / {secondary}" if secondary else primary
+    if page_secondary:
+        secondary = page_secondary
+        return f"{primary} / {secondary}" if primary else secondary
+    topic = f"{primary} / {secondary}" if primary and secondary else (primary or secondary)
+    return f"{topic}（续）" if topic and page_index > 1 else topic
+
+
+def _hierarchy(root: Path, sid: str, page_blocks: list[tuple[str, str]], page_index: int) -> list[str]:
+    """章节层级：章 / 节 / 本页实际主题。"""
     pp = __import__("bidviz_plan").load_page_plan(root) or {}
     page = pp["sections"][sid]["pages"][0]
-    lines = [f"- {page['title']['chapter']}", f"- {page['title']['section']}"]
-    for kind, t in _section_blocks(root, sid):
-        if kind == "heading" and t.startswith(("一、", "二、", "三、")):
-            lines.append(f"- {t}")
-            break
+    section_title = page["title"]["section"] + ("（续）" if page_index > 1 else "")
+    lines = [f"- {page['title']['chapter']}", f"- {section_title}"]
+    topic = page_topic(_section_blocks(root, sid), page_blocks, page_index)
+    if topic:
+        lines.append(f"- {topic}")
     return lines
 
 
@@ -140,14 +257,15 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
 
     source_text = "\n".join(t for _k, t in page_blocks)
     # 多页节页注：不写"第N/M页"（会诱导模型画页码），只说明本页编排范围
-    page_note = ("\n本页为该节多页排版中的一页，只编排上面给出的原文分段；"
-                 "不要编造分段之外的工序或参数，不要自行标注页码。" if total_pages > 1 else "")
+    page_note = ("\n本页为该节多页排版中的一页，只编排上面给出的本页主题与原文分段；"
+                 "不要重复上一页已经呈现的内容，不要编造分段之外的工序或参数，不要自行标注页码。"
+                 if total_pages > 1 else "")
 
     tpl = PROMPT_TEMPLATE.read_text(encoding="utf-8")
     from bidviz_config import get as _cfg2
     project_name = _cfg2().name
     prompt = (tpl
-              .replace("{{chapter_hierarchy}}", "\n".join(_hierarchy(root, sid)))
+              .replace("{{chapter_hierarchy}}", "\n".join(_hierarchy(root, sid, page_blocks, page_no)))
               .replace("{{project_name}}", project_name)
               .replace("{{class_imagery}}", CLASS_IMAGERY.get(main, CLASS_IMAGERY["B"]))
               .replace("{{page_note}}", page_note)

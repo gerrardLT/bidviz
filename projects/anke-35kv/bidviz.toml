@@ -9,12 +9,12 @@ standard = "执行国家电网 35kV 施工质量验收规范通用评定标准"
 client = "安科生物"
 
 [image]
-provider = "api7900"            # 第一优先级：https://api.790053500.com/v1 (¥0.08/张)
+provider = "api7900"            # 主通道：https://api.790053500.com/v1
 model = "gpt-image-2"           # 2K 档
-size = "2048x2896"              # A3 竖版满额 2K (1:1.414)
-fallback_provider = "grokimg"   # 第二优先级回退：yoshub（既有凭据别名）
+size = "2048x2896"              # A3 竖版 2K
+fallback_provider = "grokimg"   # 仅失败时回退 yoshub
 fallback_model = "gpt-image-2-2K/4K"
-dir = "work/fullimage"          # 主视觉输出目录
+dir = "work/fullimage"
 retries = 3
 pause = 1.5
 
