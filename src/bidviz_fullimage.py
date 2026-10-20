@@ -489,6 +489,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("root", nargs="?", default="projects/anke-35kv")
     ap.add_argument("--section", default=None)
     ap.add_argument("--chapter", default=None)
+    ap.add_argument("--all", action="store_true", help="全册所有章节（按 page-plan 顺序）")
     ap.add_argument("--variants", type=int, default=1,
                     help="每页变体数（多次调用实现；yoshub 实测不支持 n>1）")
     ap.add_argument("--force", action="store_true")
@@ -505,8 +506,11 @@ def main(argv: list[str] | None = None) -> int:
         sids = [s.strip().upper() for s in args.section.split(",")]
     elif args.chapter:
         sids = chapter_sids(root, args.chapter)
+    elif args.all:
+        import bidviz_plan as plan_mod
+        sids = sorted((plan_mod.load_page_plan(root) or {}).get("sections", {}).keys())
     else:
-        raise SystemExit("需要 --section 或 --chapter 之一")
+        raise SystemExit("需要 --section / --chapter / --all 之一")
     print(f"范围：{len(sids)} 节 × ≤{MAX_PAGES} 页 × {args.variants} 变体 "
           f"（{sids[0]}…{sids[-1]}）", flush=True)
 
