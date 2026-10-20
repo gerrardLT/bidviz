@@ -95,6 +95,16 @@
   .tab.on{background:#08131b;color:var(--acc)}
   .pill{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700}
   .pill.ed{background:#422006;color:var(--warn)}
+  .pill.pass{background:#123d27;color:var(--ok)} .pill.block{background:#4b1717;color:var(--red)}
+  .pill.pending{background:#4a340b;color:var(--warn)} .pill.stale{background:#3e294e;color:#d8b4fe}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;background:#071018}
+  .pane{border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:150px;display:flex;flex-direction:column}
+  .pane h4{font-size:10.5px;color:var(--mut);padding:5px 7px;background:#0d1f2b}
+  .pane img{width:100%;height:auto;display:block;cursor:zoom-in}.pane .ph{padding:42px 8px}
+  .audit{margin:0 10px 9px;padding:8px;border:1px solid var(--line);border-radius:6px;background:#0a1620;font-size:11px;line-height:1.55;color:var(--mut)}
+  .audit .bad{color:var(--red)} .audit .warn{color:var(--warn)} .audit .good{color:var(--ok)}
+  .review-note{width:100%;min-height:54px;margin:0 10px 8px;width:calc(100% - 20px)}
+  #openpdf{display:none}
 
   /* 放大 */
   #zoom{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;z-index:100;
@@ -115,7 +125,9 @@
   <div class="status"><span class="dot" id="dot"></span><span id="statustxt">就绪</span></div>
   <button class="btn" id="replan">重新规划全册</button>
   <button class="btn" id="saveall">保存全部改动</button>
-  <button class="btn pri" id="rebuild">重新汇编 PDF</button>
+  <button class="btn" id="draft">生成 DRAFT</button>
+  <button class="btn pri" id="rebuild">正式汇编 PDF</button>
+  <button class="btn" id="openpdf">打开最新 PDF</button>
 </header>
 
 <div class="wrap">
@@ -155,9 +167,15 @@ async function load() {
   const secs = DOC.chapters.reduce((n,c)=>n+c.sections.length,0);
   const chars = DOC.chapters.reduce((n,c)=>n+c.sections.reduce((m,s)=>m+s.chars,0),0);
   const p = DOC.progress || {};
-  $('#docinfo').textContent =
-    `${DOC.chapters.length} 章 / ${secs} 节 / ${chars.toLocaleString()} 字 · ` +
-    `图 ${p.planned||0} 张（已生成 ${p.generated||0}）`;
+  if (DOC.mode === 'fullimage') {
+    const g = DOC.gates || {};
+    $('#docinfo').textContent = `${DOC.chapters.length} 章 / ${secs} 节 / ${chars.toLocaleString()} 字 · ` +
+      `全图模式 ${DOC.provider} / ${DOC.model} / ${DOC.size} · ` +
+      `发布 ${g.published||0} · 待审 ${g.pending||0} · 过期 ${g.stale||0} · 缺失 ${g.missing||0} · 阻断 ${g.blocked||0}`;
+  } else {
+    $('#docinfo').textContent = `${DOC.chapters.length} 章 / ${secs} 节 / ${chars.toLocaleString()} 字 · ` +
+      `图 ${p.planned||0} 张（已生成 ${p.generated||0}）`;
+  }
 }
 
 function renderTree() {
@@ -187,21 +205,36 @@ function renderDoc() {
   bind();
 }
 
+function auditHTML(f) {
+  const c = f.candidate;
+  if (!c) return '<div class="audit">尚无候选门禁结果</div>';
+  const checks = ((c.checks||{}).checks || []);
+  const lines = checks.map(x => `<div class="${x.level==='block'?'bad':x.level==='warn'?'warn':'good'}">${x.level==='block'?'✕':x.level==='warn'?'!':'✓'} ${esc(x.message||x.code)}</div>`).join('');
+  return `<div class="audit"><b>候选 ${esc(c.version||'')} · ${esc(c.provider||'')} / ${esc(c.model||'')} · ${esc(c.actual_size||'')}</b>${lines || '<div>等待自动门禁</div>'}</div>`;
+}
+
 function figHTML(s, f) {
-  const shot = f.image
-    ? `<img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="${esc(s.title)} 图${f.no}">`
-    : `<div class="ph">尚未生成<br>点下方「重生此图」</div>`;
-  return `
-  <div class="fig" data-s="${s.id}" data-no="${f.no}">
-    <div class="shot">${shot}</div>
-    <div class="cap">
-      <b>图 ${f.no} · ${esc(f.name || '')}</b>${f.custom ? ' <span style="color:var(--warn)">已改词</span>' : ''}
-      <div>${esc(f.why || '')}</div>
-      <span class="gen">${esc(f.gen || '')}</span>
-    </div>
+  if (DOC.mode !== 'fullimage') {
+    const shot = f.image ? `<img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="${esc(s.title)} 图${f.no}">`
+                         : `<div class="ph">尚未生成<br>点下方「重生此图」</div>`;
+    return `<div class="fig" data-s="${s.id}" data-no="${f.no}"><div class="shot">${shot}</div><div class="cap"><b>图 ${f.no} · ${esc(f.name||'')}</b><div>${esc(f.why||'')}</div><span class="gen">${esc(f.gen||'')}</span></div><div class="acts"><button class="btn" data-act="edit" data-s="${s.id}" data-no="${f.no}">编辑提示词</button><button class="btn" data-act="regen" data-s="${s.id}" data-no="${f.no}">重生此图</button></div></div>`;
+  }
+  const pub = f.image ? `<img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="已发布">` : '<div class="ph">尚无已发布版本</div>';
+  const cand = f.candidate_image ? `<img src="${f.candidate_image}?t=${f.candidate_ts||Date.now()}" loading="lazy" alt="候选">` : '<div class="ph">尚无候选图</div>';
+  const status = f.stale ? 'stale' : (f.status==='blocked'?'block':f.status==='published'?'pass':'pending');
+  const label = f.stale?'提示词已过期':f.status==='blocked'?'候选已阻断':f.status==='published'?'已发布':f.status==='review'?'候选待审':'缺失/待生成';
+  const v = f.candidate && f.candidate.version || '';
+  return `<div class="fig" data-s="${s.id}" data-no="${f.no}">
+    <div class="compare"><div class="pane"><h4>当前已发布</h4>${pub}</div><div class="pane"><h4>最新候选</h4>${cand}</div></div>
+    <div class="cap"><b>${esc(f.name)}</b> <span class="pill ${status}">${label}</span>${f.custom?' <span style="color:var(--warn)">自定义提示词</span>':''}<div>${esc(f.why||'')}</div><span class="gen">${esc(f.gen||'')} · source ${esc((f.source_hash||'').slice(0,8))}</span></div>
+    ${auditHTML(f)}
+    <textarea class="review-note" data-review-note="${s.id}-${f.no}" placeholder="批准/退回/豁免备注（豁免必须填写）"></textarea>
     <div class="acts">
-      <button class="btn" data-act="edit" data-s="${s.id}" data-no="${f.no}">编辑提示词</button>
-      <button class="btn" data-act="regen" data-s="${s.id}" data-no="${f.no}">重生此图</button>
+      <button class="btn" data-act="edit" data-s="${s.id}" data-no="${f.no}">编辑本页提示词</button>
+      <button class="btn pri" data-act="regen" data-s="${s.id}" data-no="${f.no}">生成候选 2K</button>
+      <button class="btn" data-act="prompt-reset" data-s="${s.id}" data-no="${f.no}">恢复自动提示词</button>
+      ${v?`<button class="btn" data-act="approve" data-s="${s.id}" data-no="${f.no}" data-v="${v}">批准并发布</button><button class="btn" data-act="reject" data-s="${s.id}" data-no="${f.no}" data-v="${v}">退回</button><button class="btn" data-act="waive" data-s="${s.id}" data-no="${f.no}" data-v="${v}">豁免发布</button>`:''}
+      ${f.published?`<button class="btn" data-act="rollback" data-s="${s.id}" data-no="${f.no}">回滚</button>`:''}
     </div>
   </div>`;
 }
@@ -234,15 +267,15 @@ function secHTML(s) {
     <div class="sec-h">
       <span class="sec-id">${s.id}</span>
       <input class="sec-title" data-f="title" data-s="${s.id}" value="${esc(s.title)}">
-      <span class="meta">${s.chars.toLocaleString()} 字 · ${figs.length} 图</span>
+      <span class="meta">${s.chars.toLocaleString()} 字 · ${figs.length} ${DOC.mode==='fullimage'?'页':'图'}</span>
       ${s.edited ? '<span class="pill ed">已编辑</span>' : ''}
       <button class="btn" data-act="save" data-s="${s.id}">保存</button>
-      <button class="btn" data-act="replan" data-s="${s.id}">重规划</button>
+      ${DOC.mode==='fullimage'?'':`<button class="btn" data-act="replan" data-s="${s.id}">重规划</button>`}
       <button class="btn" data-act="reset" data-s="${s.id}">还原正文</button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 8px">${dimsHTML(s.dims)}</div>
     <div class="sec-b">
-      <div class="figs${figs.length > 1 ? ' two' : ''}">
+      <div class="figs${DOC.mode !== 'fullimage' && figs.length > 1 ? ' two' : ''}">
         ${figs.length ? figs.map(f => figHTML(s, f)).join('')
                       : '<div class="ph">本节未规划图位，点右上「重规划」</div>'}
       </div>
@@ -254,7 +287,7 @@ function secHTML(s) {
         </div>
         <div class="row">
           ${figs.map((f, i) => `<span class="chip${i === 0 ? ' on' : ''}${f.custom ? ' cust' : ''}"
-            data-s="${s.id}" data-no="${f.no}">图 ${f.no}</span>`).join('')}
+            data-s="${s.id}" data-no="${f.no}">${DOC.mode==='fullimage'?'第 '+f.no+' 页':'图 '+f.no}</span>`).join('')}
         </div>
         <textarea class="ta-prompt" data-f="prompt" data-s="${s.id}" data-no="${first.no}">${esc(first.prompt || '')}</textarea>
         <textarea class="ta-body" data-f="body" data-s="${s.id}" style="display:none">${esc(s.blocks.filter(b=>b.kind!=='heading').map(b=>b.text).join('\n\n'))}</textarea>
@@ -319,6 +352,9 @@ function bind() {
       if (act === 'edit')   switchFig(sid, no);
       if (act === 'replan') replan(sid);
       if (act === 'reset')  resetSec(sid);
+      if (act === 'prompt-reset') promptReset(sid, no);
+      if (['approve','reject','waive'].includes(act)) decide(sid, no, b.dataset.v, act);
+      if (act === 'rollback') rollback(sid, no);
     };
   });
 }
@@ -428,9 +464,56 @@ async function resetSec(sid) {
 
 async function regen(sid, no) {
   if (dirty.get(sid)) await saveSec(sid);
-  await api(`/api/section/${sid}/regen`, { fig: +no });
-  toast(`已提交生成：${sid} 图${no}`);
-  startPoll();
+  const f = findFig(sid, no);
+  if (DOC.mode === 'fullimage') {
+    const r = await api(`/api/section/${sid}/pages/${no}/generate`, {
+      page:+no, prompt:promptOf(sid,no), expected_source_hash:f.source_hash
+    });
+    toast(`已提交候选：${sid} 第${no}页`);
+    startJobPoll(r.job_id);
+  } else {
+    await api(`/api/section/${sid}/regen`, { fig:+no });
+    toast(`已提交生成：${sid} 图${no}`); startPoll();
+  }
+}
+
+async function startJobPoll(jobId) {
+  if (polling) clearInterval(polling);
+  polling = setInterval(async()=>{
+    try {
+      const j = await api('/api/jobs/' + jobId);
+      $('#statustxt').textContent = j.msg || j.status;
+      $('#dot').classList.toggle('on', ['draft','generating','auto_check'].includes(j.status));
+      if (['review','blocked','failed','rejected','published'].includes(j.status)) {
+        clearInterval(polling); polling=null; await reloadKeepScroll(); toast(j.msg||j.status);
+      }
+    } catch(e) { clearInterval(polling); polling=null; }
+  }, 2500);
+}
+
+async function promptReset(sid,no) {
+  if (!confirm('恢复本页自动提示词？自定义提示词将删除。')) return;
+  await api(`/api/section/${sid}/pages/${no}/prompt-reset`, {});
+  dirty.delete(sid); await reloadKeepScroll(); toast('已恢复自动提示词');
+}
+
+function reviewComment(sid,no) {
+  return document.querySelector(`[data-review-note="${sid}-${no}"]`)?.value.trim() || '';
+}
+
+async function decide(sid,no,version,action) {
+  const comment = reviewComment(sid,no);
+  if (action==='waive' && !comment) { toast('豁免必须填写原因'); return; }
+  const label = {approve:'批准并发布',reject:'退回',waive:'豁免发布'}[action];
+  if (!confirm(`${label} ${sid} 第${no}页候选 ${version}？`)) return;
+  await api(`/api/section/${sid}/pages/${no}/${action}`, {version,comment,decided_by:'web-user'});
+  await reloadKeepScroll(); toast(label+'完成');
+}
+
+async function rollback(sid,no) {
+  if (!confirm(`回滚 ${sid} 第${no}页到上一已发布版本？`)) return;
+  await api(`/api/section/${sid}/pages/${no}/rollback`, {});
+  await reloadKeepScroll(); toast('已回滚');
 }
 
 async function replan(sid) {
@@ -469,12 +552,20 @@ $('#srch').oninput = renderTree;
 $('#saveall').onclick = saveAll;
 $('#replan').onclick = () => replan(null);
 $('#zoom').onclick = () => $('#zoom').style.display = 'none';
-$('#rebuild').onclick = async () => {
+async function rebuild(draft=false) {
   await saveAll();
-  await api('/api/rebuild', {});
-  toast('已开始汇编 PDF');
-  startPoll();
-};
+  if (!draft && DOC.mode==='fullimage' && !(DOC.gates||{}).can_build_final) {
+    const g=DOC.gates||{};
+    alert(`正式汇编被门禁阻断：待审 ${g.pending||0}，过期 ${g.stale||0}，缺失 ${g.missing||0}，阻断 ${g.blocked||0}`);
+    return;
+  }
+  await api('/api/rebuild', {draft});
+  toast(draft?'已开始生成 DRAFT':'已开始正式汇编'); startPoll();
+  setTimeout(()=>{$('#openpdf').style.display='';$('#openpdf').dataset.draft=draft?'1':'';},1000);
+}
+$('#rebuild').onclick = () => rebuild(false);
+$('#draft').onclick = () => rebuild(true);
+$('#openpdf').onclick = () => window.open('/api/pdf'+($('#openpdf').dataset.draft?'?draft=1':''),'_blank');
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); }
   if (e.key === 'Escape') $('#zoom').style.display = 'none';

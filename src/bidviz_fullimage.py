@@ -74,7 +74,9 @@ def _section_blocks(root: Path, sid: str) -> list[tuple[str, str]]:
     import bidviz_e1 as e1
     import build_e1 as be
     blocks, _pm = be.load_project(Path(root))
-    sec = next((s for s in e1.group_sections(blocks) if s.section_id == sid), None)
+    sections = e1.group_sections(blocks)
+    be.apply_edits(Path(root), sections)
+    sec = next((s for s in sections if s.section_id == sid), None)
     if not sec:
         raise SystemExit(f"blocks 中无节 {sid}")
     out = []
@@ -181,15 +183,20 @@ def save_ledger(root: Path, led: dict) -> None:
 
 def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
                   page_blocks: list[tuple[str, str]], force: bool = False,
-                  variant: int = 1, dry_run: bool = False) -> dict[str, Any]:
+                  variant: int = 1, dry_run: bool = False,
+                  prompt_override: str | None = None,
+                  output_path: Path | None = None) -> dict[str, Any]:
     import bidviz
     from bidviz_config import provider_credentials, get as _cfg
 
     root = Path(root)
     built = build_fullpage_prompt(root, sid, page_no, total_pages, page_blocks)
+    if prompt_override is not None:
+        built["prompt"] = prompt_override.strip()
     stem = f"{sid}_p{page_no}" + (f"_v{variant}" if variant > 1 else "")
-    out = out_dir(root) / f"{stem}.png"
-    prompt_snap = out_dir(root) / f"_prompt_{stem}.txt"
+    out = Path(output_path) if output_path is not None else out_dir(root) / f"{stem}.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    prompt_snap = out.with_name(f"_prompt_{out.stem}.txt")
 
     if dry_run:
         print(f"[dry-run] {stem} 提示词 {len(built['prompt'])} 字 / "
@@ -219,7 +226,7 @@ def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
 
     for prov_name, model_name in providers_to_try:
         try:
-            cred = provider_credentials(prov_name)
+            cred = provider_credentials(prov_name, env_first=False)
             api = bidviz.ImageAPI(base_url=cred["baseUrl"], api_key=cred["apiKey"], model=model_name)
             print(f"  [通道] 使用 {prov_name} ({model_name}) ...", flush=True)
         except Exception as e:
@@ -300,7 +307,8 @@ def chapter_sids(root: Path, chapter_kw: str) -> list[str]:
 # ---------------------------------------------------------------- 汇编（整图页 + 隐藏层）
 
 
-def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path) -> Path:
+def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
+                        image_resolver=None, draft: bool = False) -> Path:
     """整图页（等比无损置入）+ 矢量全局页码 + 隐藏层原文 → A3 竖版 PDF。
 
     页码方案（2026-10-17 拍板）：AI 图内禁止画页码；汇编时在页面底部 24pt 白边
@@ -317,11 +325,17 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path) -> Path:
     for sid in sids:
         pages = split_pages(_section_blocks(root, sid))
         for i, page_blocks in enumerate(pages, 1):
-            # 变体挑选：取台账里 actual 最大的（同请求档下分辨率最高者）
-            cands = sorted(out_dir(root).glob(f"{sid}_p{i}*.png"))
-            if not cands:
-                continue
-            img = max(cands, key=lambda p: p.stat().st_size)
+            if image_resolver is not None:
+                img = image_resolver(sid, i)
+                if img is None or not Path(img).exists():
+                    continue
+                img = Path(img)
+            else:
+                # CLI 兼容路径：取台账里 actual 最大的候选；Web 正式汇编传 resolver，只读 published
+                cands = sorted(out_dir(root).glob(f"{sid}_p{i}*.png"))
+                if not cands:
+                    continue
+                img = max(cands, key=lambda p: p.stat().st_size)
             global_no += 1
             # 方案 A1：等比包含（contain），图完整放入标题区…页脚带之间
             sheet.image(img, 0, 0, sheet.w, sheet.h - footer_h, dpi=200, fit="contain")
@@ -329,6 +343,14 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path) -> Path:
             muted = "#5a6e7c"
             sheet.text(sheet.w / 2, sheet.h - footer_h + 7, f"— {global_no} —",
                        9.0, False, muted, align="center")
+            if draft:
+                sheet.c.saveState()
+                sheet.c.setFillColorRGB(0.75, 0.1, 0.1, alpha=0.18)
+                sheet.c.setFont("Helvetica-Bold", 72)
+                sheet.c.translate(sheet.w / 2, sheet.h / 2)
+                sheet.c.rotate(35)
+                sheet.c.drawCentredString(0, 0, "DRAFT")
+                sheet.c.restoreState()
             built = build_fullpage_prompt(root, sid, i, len(pages), page_blocks)
             hy = sheet.h - footer_h - 12 - len(built["hidden"]) * 8.4
             for line in built["hidden"]:

@@ -70,6 +70,8 @@ bidviz serve demo-35kv --port 8770
 
 浏览器打开 `http://localhost:8770/`。
 
+当前 `anke-35kv` 的 `[layout].engine = "fullimage"`，Web 已升级为全图质量工作台：编辑完整页提示词 → 生成候选 2K → 自动门禁 → 人工批准发布 → 全部页面通过后正式汇编。候选不会直接覆盖已发布图；存在待审、过期、缺失或阻断页面时，正式 PDF 会被阻断，可另生成带水印 DRAFT。
+
 ## 常用命令
 
 ```powershell

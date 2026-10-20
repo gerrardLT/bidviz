@@ -15,9 +15,11 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -34,6 +36,12 @@ import bidviz_layout as layout  # noqa: E402
 import bidviz_plan as plan  # noqa: E402
 import build_e1 as be  # noqa: E402
 import generate_chapter as gc  # noqa: E402
+import bidviz_fullimage as fullimage  # noqa: E402
+import bidviz_fullimage_audit as fullaudit  # noqa: E402
+try:
+    import bidviz_fullimage_store as fullstore  # noqa: E402
+except ImportError:  # 模块由 W0 阶段提供；缺失时 fullimage API 返回明确错误
+    fullstore = None
 from bidviz_config import load as _load_cfg, get as _cfg  # noqa: E402
 
 # 项目目录：命令行第 2 个参数 > 环境变量 BIDVIZ_PROJECT > 默认
@@ -59,6 +67,54 @@ def find_image(sid: str, no: int = 1):
 
 _state = {"running": False, "section": "", "fig": 0, "done": 0, "total": 0, "msg": ""}
 _lock = threading.Lock()
+
+
+def fullimage_mode() -> bool:
+    return _cfg().layout_engine == "fullimage"
+
+
+def _require_store():
+    if fullstore is None:
+        raise RuntimeError("bidviz_fullimage_store 未安装")
+    return fullstore
+
+
+def _hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _fullimage_sections():
+    chapters, secs = chapter_map()
+    return chapters, secs
+
+
+def _fullimage_page_context(sid: str, page_no: int, secs: dict | None = None) -> dict:
+    """构建页面提示词/哈希/原文上下文；正文 edits 已在 chapter_map 中投影。"""
+    store = _require_store()
+    if secs is None:
+        _chapters, secs = _fullimage_sections()
+    sec = secs.get(sid)
+    if sec is None:
+        raise KeyError(f"节不存在：{sid}")
+    blocks = [(getattr(b, "kind", "body"), (getattr(b, "text", "") or "").strip())
+              for b in sec.blocks if (getattr(b, "text", "") or "").strip() and
+              (getattr(b, "text", "") or "").strip() != sec.title]
+    pages = fullimage.split_pages(blocks)
+    if page_no < 1 or page_no > len(pages):
+        raise IndexError(f"{sid} 无第 {page_no} 页（共 {len(pages)} 页）")
+    built = fullimage.build_fullpage_prompt(ROOT, sid, page_no, len(pages), pages[page_no - 1])
+    source_text = "\n".join(x[1] for x in pages[page_no - 1])
+    source_hash = store.sha256_text(sec.title + "\n" + source_text)
+    template_hash = store.sha256_text(fullimage.PROMPT_TEMPLATE.read_text(encoding="utf-8"))
+    ov = store.get_prompt_override(ROOT, sid, page_no, built["prompt"], source_hash)
+    chapter = (sec.chapter or "").split(" / ")[0]
+    return {"sid": sid, "page": page_no, "total_pages": len(pages), "section": sec,
+            "chapter": chapter,
+            "page_blocks": pages[page_no - 1], "built": built,
+            "auto_prompt": built["prompt"], "resolved_prompt": ov["resolved_prompt"],
+            "custom": ov["custom"], "stale": ov["stale"], "source_hash": source_hash,
+            "template_hash": template_hash, "prompt_hash": store.sha256_text(ov["resolved_prompt"]),
+            "source_text": source_text}
 
 
 # ---------------------------------------------------------------- 数据
@@ -136,35 +192,73 @@ def chapter_map():
     return chapters, {s.section_id: s for s in sections}
 
 
+def _fullimage_payload(sid: str, secs: dict) -> list[dict]:
+    store = _require_store()
+    total = len(fullimage.split_pages([(getattr(b, "kind", "body"), getattr(b, "text", ""))
+                                       for b in secs[sid].blocks
+                                       if getattr(b, "text", "").strip() and
+                                       getattr(b, "text", "").strip() != secs[sid].title]))
+    pages = []
+    for page_no in range(1, total + 1):
+        ctx = _fullimage_page_context(sid, page_no, secs)
+        state = store.ensure_page(ROOT, sid, page_no, ctx["source_hash"],
+                                  ctx["template_hash"], ctx["prompt_hash"])
+        published = (state.get("published") or {}).get("current")
+        candidates = store.list_candidates(ROOT, sid, page_no)
+        latest_meta = candidates[-1] if candidates else None
+        latest = int(latest_meta["version"]) if latest_meta else None
+        latest_label = f"v{latest:04d}" if latest else None
+        published_path = store.published_path(ROOT, sid, page_no)
+        pages.append({
+            "no": page_no, "page": page_no, "kind": "fullimage",
+            "name": f"第 {page_no} 页整页大样", "why": f"本节共 {total} 页",
+            "prompt": ctx["resolved_prompt"], "auto_prompt": ctx["auto_prompt"],
+            "custom": ctx["custom"], "stale": ctx["stale"] or bool(state.get("stale")),
+            "source_hash": ctx["source_hash"], "prompt_hash": ctx["prompt_hash"],
+            "image": f"/api/fullimage/published/{sid}/{page_no}" if published_path.exists() else None,
+            "image_ts": int(published_path.stat().st_mtime) if published_path.exists() else 0,
+            "candidate_image": (f"/api/fullimage/candidate/{sid}/{page_no}/{latest_label}"
+                                if latest else None),
+            "candidate_ts": int(latest_meta.get("created_ts", 0)) if latest_meta else 0,
+            "candidate": latest_meta, "published": published,
+            "status": ("published" if published else
+                       (latest_meta.get("status", "pending") if latest_meta else "missing")),
+            "gen": f"{_cfg().provider} / {_cfg().model} / {_cfg().image_size}",
+        })
+    return pages
+
+
 def doc_payload() -> dict:
     chapters, secs = chapter_map()
     edits = load_edits()
-    plan.ensure_plan(ROOT)          # 正文改过的节自动重算图位与提示词
+    mode = "fullimage" if fullimage_mode() else "legacy"
+    if mode == "legacy":
+        plan.ensure_plan(ROOT)
     out = []
+    expected = []
     for cname, ids in chapters.items():
         sects = []
         for sid in ids:
             s = secs[sid]
             vis = s.as_visual_item()
             ed = edits.get(sid, {})
-            blocks = [
-                {"kind": getattr(b, "kind", "para"), "text": getattr(b, "text", "")}
-                for b in s.blocks
-            ]
-            figs = plan.section_figures(ROOT, sid, vis)
-            sects.append({
-                "id": sid,
-                "title": ed.get("title", vis.title),
-                "chars": sum(len(b["text"]) for b in blocks),
-                "blocks": blocks,
-                "edited": bool(ed),
-                "figures": figure_payload(sid, figs),
-                "facts": facts_of(vis),
-                "dims": layout.dim_profile(vis),
-            })
+            blocks = [{"kind": getattr(b, "kind", "para"), "text": getattr(b, "text", "")}
+                      for b in s.blocks]
+            figs = _fullimage_payload(sid, secs) if mode == "fullimage" else \
+                figure_payload(sid, plan.section_figures(ROOT, sid, vis))
+            if mode == "fullimage":
+                expected.extend((sid, f["page"]) for f in figs)
+            sects.append({"id": sid, "title": ed.get("title", vis.title),
+                          "chars": sum(len(b["text"]) for b in blocks), "blocks": blocks,
+                          "edited": bool(ed), "figures": figs, "facts": facts_of(vis),
+                          "dims": layout.dim_profile(vis)})
         out.append({"name": cname, "sections": sects})
+    gates = _require_store().gate_summary(ROOT, expected) if mode == "fullimage" else None
     return {"chapters": out, "edits": len(edits), "max_figures": _cfg().max_figures,
-            "progress": gc.figure_progress(ROOT)}
+            "mode": mode, "engine": _cfg().layout_engine,
+            "provider": _cfg().provider, "model": _cfg().model, "size": _cfg().image_size,
+            "gates": gates,
+            "progress": gc.figure_progress(ROOT) if mode == "legacy" else gates}
 
 
 # ---------------------------------------------------------------- 动作
@@ -226,6 +320,64 @@ def do_regen(sid: str, no: int = 1) -> None:
         _state.update(msg=msg, running=False)
 
 
+def _vision_ocr(path: Path) -> list[str] | None:
+    try:
+        import bidviz_v2
+        return bidviz_v2.vision_transcribe(path)
+    except Exception:
+        return None
+
+
+def do_fullimage_generate(job_id: str, sid: str, page_no: int,
+                          expected_source_hash: str, prompt: str) -> None:
+    store = _require_store()
+    try:
+        _chapters, secs = _fullimage_sections()
+        ctx = _fullimage_page_context(sid, page_no, secs)
+        if ctx["source_hash"] != expected_source_hash:
+            raise RuntimeError("原文已变化，请刷新页面后重新提交")
+        version = store.next_candidate_version(ROOT, sid, page_no)
+        candidate = store.candidate_path(ROOT, sid, page_no, version)
+        store.update_job(ROOT, job_id, status="generating", version=version,
+                         msg=f"生成 {sid} 第{page_no}页候选 {version} …")
+        with _lock:
+            _state.update(running=True, section=sid, fig=page_no,
+                          msg=f"生成候选：{sid} 第{page_no}页 {version} …")
+        rec = fullimage.generate_page(ROOT, sid, page_no, ctx["total_pages"],
+                                      ctx["page_blocks"], force=True,
+                                      prompt_override=prompt, output_path=candidate)
+        if not rec.get("ok"):
+            raise RuntimeError(rec.get("error") or "生图失败")
+        ocr = _vision_ocr(candidate)
+        audit = fullaudit.audit_candidate(candidate, chapter=ctx["chapter"],
+                                          section=ctx["section"].title,
+                                          source_lines=[x[1] for x in ctx["page_blocks"]],
+                                          ocr_texts=ocr,
+                                          reference_count=int(rec.get("reference_count", 1)))
+        status = "blocked" if audit["status"] == "block" else "review"
+        metadata = {"sid": sid, "page": page_no, "version": version, "status": status,
+                    "source_hash": ctx["source_hash"], "template_hash": ctx["template_hash"],
+                    "prompt_hash": store.sha256_text(prompt), "prompt": prompt,
+                    "provider": rec.get("provider"), "model": rec.get("model"),
+                    "requested_size": rec.get("requested"), "actual_size": rec.get("actual"),
+                    "reference_count": rec.get("reference_count", 1),
+                    "sec": rec.get("sec"), "kb": rec.get("kb"), "checks": audit,
+                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "created_ts": time.time(), "decision": None}
+        store.register_candidate(ROOT, metadata)
+        store.update_job(ROOT, job_id, status=status, version=version,
+                         msg=f"候选 {version} 已生成，门禁：{audit['status']}", result=metadata)
+        msg = f"{sid} 第{page_no}页候选完成（{audit['status']}）"
+    except Exception as exc:
+        traceback.print_exc()
+        store.update_job(ROOT, job_id, status="failed", error=str(exc)[:300],
+                         msg=f"生成失败：{str(exc)[:150]}")
+        msg = f"{sid} 第{page_no}页生成失败: {str(exc)[:120]}"
+    finally:
+        with _lock:
+            _state.update(running=False, msg=msg)
+
+
 def do_replan(section: str | None, force: bool) -> None:
     only = [x.strip() for x in (section or "").split(",") if x.strip()] or None
     with _lock:
@@ -242,15 +394,52 @@ def do_replan(section: str | None, force: bool) -> None:
             _state.update(msg=msg, running=False)
 
 
-def do_rebuild() -> None:
+def _expected_fullimage_pages() -> list[tuple[str, int]]:
+    chapters, secs = _fullimage_sections()
+    return [(sid, page_no) for ids in chapters.values() for sid in ids
+            for page_no in range(1, len(fullimage.split_pages([
+                (getattr(b, "kind", "body"), getattr(b, "text", "")) for b in secs[sid].blocks
+                if getattr(b, "text", "").strip() and getattr(b, "text", "").strip() != secs[sid].title])) + 1)]
+
+
+def do_rebuild(draft: bool = False) -> None:
     with _lock:
         _state.update(running=True, msg="汇编 PDF …")
     try:
         _cfg().output.mkdir(parents=True, exist_ok=True)
-        out_pdf = _cfg().output / "施工组织设计-图册-A3.pdf"
-        pages, _ = be.build_final(ROOT, out_pdf)
+        if fullimage_mode():
+            store = _require_store()
+            expected = _expected_fullimage_pages()
+            summary = store.gate_summary(ROOT, expected)
+            if not draft and not summary.get("can_build_final"):
+                raise RuntimeError("正式汇编被门禁阻断：仍有 pending/stale/missing/blocked 页面")
+            sids = []
+            for sid, _page in expected:
+                if sid not in sids:
+                    sids.append(sid)
+            if draft:
+                usable = summary.get("published", 0) + summary.get("pending", 0) + summary.get("blocked", 0)
+                if usable <= 0:
+                    raise RuntimeError("DRAFT 汇编失败：尚无已发布或候选页面")
+                out_pdf = _cfg().output / "施工组织设计-图册-A3-fullimage-DRAFT.pdf"
+                def resolver(sid, page):
+                    published = store.published_path(ROOT, sid, page)
+                    if published.exists():
+                        return published
+                    candidates = store.list_candidates(ROOT, sid, page)
+                    if candidates:
+                        return store.candidate_path(ROOT, sid, page, candidates[-1]["version"])
+                    return None
+            else:
+                out_pdf = _cfg().output / "施工组织设计-图册-A3-fullimage.pdf"
+                resolver = lambda sid, page: store.published_path(ROOT, sid, page)
+            fullimage.build_fullimage_pdf(ROOT, sids, out_pdf, image_resolver=resolver, draft=draft)
+            pages = len(expected)
+        else:
+            out_pdf = _cfg().output / "施工组织设计-图册-A3.pdf"
+            pages, _ = be.build_final(ROOT, out_pdf)
         with _lock:
-            _state.update(msg=f"PDF 已重建（{pages} 页）")
+            _state.update(msg=f"PDF 已重建（{pages} 页）", pdf=f"/api/pdf{'?draft=1' if draft else ''}")
     except Exception as exc:
         traceback.print_exc()
         with _lock:
@@ -284,6 +473,17 @@ class Handler(SimpleHTTPRequestHandler):
             return {}
         return json.loads(self.rfile.read(n).decode("utf-8"))
 
+    def _file(self, path: Path, content_type: str) -> None:
+        if not path.exists() or not path.is_file():
+            return self.send_error(404)
+        body = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         p = urlparse(self.path).path
         if p == "/api/doc":
@@ -291,8 +491,25 @@ class Handler(SimpleHTTPRequestHandler):
         if p == "/api/status":
             with _lock:
                 st = dict(_state)
-            st["progress"] = gc.figure_progress(ROOT)
+            st["progress"] = (None if fullimage_mode() else gc.figure_progress(ROOT))
             return self._json(st)
+        m = re.fullmatch(r"/api/jobs/([\w-]+)", p)
+        if m and fullimage_mode():
+            job = _require_store().get_job(ROOT, m.group(1))
+            return self._json(job or {"error": "job not found"}, 200 if job else 404)
+        m = re.fullmatch(r"/api/fullimage/published/(S\d+)/(\d+)", p)
+        if m:
+            return self._file(_require_store().published_path(ROOT, m.group(1), int(m.group(2))), "image/png")
+        m = re.fullmatch(r"/api/fullimage/candidate/(S\d+)/(\d+)/(v\d+)", p)
+        if m:
+            version = int(m.group(3)[1:])
+            return self._file(_require_store().candidate_path(ROOT, m.group(1), int(m.group(2)), version), "image/png")
+        if p == "/api/pdf":
+            from urllib.parse import parse_qs
+            draft = bool(parse_qs(urlparse(self.path).query).get("draft"))
+            pdf = _cfg().output / ("施工组织设计-图册-A3-fullimage-DRAFT.pdf" if draft else
+                                   "施工组织设计-图册-A3-fullimage.pdf")
+            return self._file(pdf, "application/pdf")
         m = re.fullmatch(r"/api/image/(S\d+)(?:/(\d+))?", p)
         if m:
             image = find_image(m.group(1), int(m.group(2) or 1))
@@ -313,7 +530,8 @@ class Handler(SimpleHTTPRequestHandler):
         p = urlparse(self.path).path
         try:
             if p == "/api/rebuild":
-                threading.Thread(target=do_rebuild, daemon=True).start()
+                body = self._body()
+                threading.Thread(target=do_rebuild, args=(bool(body.get("draft")),), daemon=True).start()
                 return self._json({"ok": True})
 
             if p == "/api/replan":
@@ -323,11 +541,53 @@ class Handler(SimpleHTTPRequestHandler):
                                  daemon=True).start()
                 return self._json({"ok": True})
 
+            m = re.fullmatch(r"/api/section/(S\d+)/pages/(\d+)/(generate|prompt-reset|approve|reject|waive|rollback)", p)
+            if m and fullimage_mode():
+                sid, page_no, action = m.group(1), int(m.group(2)), m.group(3)
+                body = self._body()
+                store = _require_store()
+                if action == "generate":
+                    ctx = _fullimage_page_context(sid, page_no)
+                    expected = str(body.get("expected_source_hash") or "")
+                    if expected != ctx["source_hash"]:
+                        return self._json({"error": "原文已变化，请刷新后重试"}, 409)
+                    prompt = str(body.get("prompt") or ctx["resolved_prompt"]).strip()
+                    job = store.create_job(ROOT, sid=sid, page=page_no)
+                    threading.Thread(target=do_fullimage_generate,
+                                     args=(job["job_id"], sid, page_no, expected, prompt),
+                                     daemon=True).start()
+                    return self._json({"ok": True, "job_id": job["job_id"]})
+                if action == "prompt-reset":
+                    store.reset_prompt_override(ROOT, sid, page_no)
+                    return self._json({"ok": True})
+                version = str(body.get("version") or "")
+                if action in ("approve", "reject", "waive"):
+                    if not version:
+                        return self._json({"error": "缺少候选版本"}, 400)
+                    version_no = int(version[1:]) if version.startswith("v") else int(version)
+                    meta = store.record_decision(ROOT, sid, page_no, version_no, action,
+                                                 str(body.get("decided_by") or "web-user"),
+                                                 str(body.get("comment") or ""))
+                    if action in ("approve", "waive"):
+                        store.publish_candidate(ROOT, sid, page_no, version_no)
+                    return self._json({"ok": True, "candidate": meta})
+                if action == "rollback":
+                    return self._json({"ok": True, "page": store.rollback_published(ROOT, sid, page_no)})
+
             m = re.match(r"^/api/section/(\w+)(?:/(\w+))?$", p)
             if m:
                 sid, action = m.group(1), m.group(2)
                 if action == "regen":
                     body = self._body()
+                    if fullimage_mode():
+                        page_no = int(body.get("page") or body.get("fig") or 1)
+                        ctx = _fullimage_page_context(sid, page_no)
+                        prompt = str(body.get("prompt") or ctx["resolved_prompt"])
+                        job = _require_store().create_job(ROOT, sid, page_no)
+                        threading.Thread(target=do_fullimage_generate,
+                                         args=(job["job_id"], sid, page_no, ctx["source_hash"], prompt),
+                                         daemon=True).start()
+                        return self._json({"ok": True, "job_id": job["job_id"]})
                     threading.Thread(target=do_regen,
                                      args=(sid, int(body.get("fig") or 1)), daemon=True).start()
                     return self._json({"ok": True})
@@ -349,7 +609,18 @@ class Handler(SimpleHTTPRequestHandler):
                     save_edits(edits)
                 prompts = body.get("prompts")
                 if isinstance(prompts, dict) and prompts:
-                    n = save_prompts(sid, {str(k): v for k, v in prompts.items()})
+                    if fullimage_mode():
+                        n = 0
+                        for raw_page, text in prompts.items():
+                            page_no = int(raw_page)
+                            if not isinstance(text, str) or not text.strip():
+                                continue
+                            ctx = _fullimage_page_context(sid, page_no)
+                            _require_store().set_prompt_override(ROOT, sid, page_no, text.strip(),
+                                                                 ctx["source_hash"])
+                            n += 1
+                    else:
+                        n = save_prompts(sid, {str(k): v for k, v in prompts.items()})
                     fields.append(f"prompts×{n}")
                 return self._json({"ok": True, "saved": sid, "fields": fields})
 

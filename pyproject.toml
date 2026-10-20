@@ -26,8 +26,9 @@ bidviz = "bidviz_cli:main"
 package-dir = {"" = "src"}
 py-modules = [
     "audit_layout", "bidviz", "bidviz_album", "bidviz_charts", "bidviz_classify",
-    "bidviz_cli", "bidviz_config", "bidviz_e1", "bidviz_ingest_tables", "bidviz_issues",
-    "bidviz_layout", "bidviz_plan", "bidviz_templates", "bidviz_v2", "bidviz_vector",
+    "bidviz_cli", "bidviz_config", "bidviz_e1", "bidviz_fullimage", "bidviz_fullimage_audit",
+    "bidviz_fullimage_store", "bidviz_ingest_tables", "bidviz_issues", "bidviz_layout",
+    "bidviz_plan", "bidviz_templates", "bidviz_v2", "bidviz_vector",
     "build_e1", "build_sample_s003", "build_v13", "generate_chapter", "run_pipeline",
 ]
 # 约定：新增 src/*.py 模块必须同步加入上方清单（editable install 依赖它；

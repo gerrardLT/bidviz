@@ -12,11 +12,14 @@ client = "安科生物"
 provider = "api7900"            # 第一优先级：https://api.790053500.com/v1 (¥0.08/张)
 model = "gpt-image-2"           # 2K 档
 size = "2048x2896"              # A3 竖版满额 2K (1:1.414)
-fallback_provider = "yoshub"    # 第二优先级回退：yoshub
+fallback_provider = "grokimg"   # 第二优先级回退：yoshub（既有凭据别名）
 fallback_model = "gpt-image-2-2K/4K"
 dir = "work/fullimage"          # 主视觉输出目录
 retries = 3
 pause = 1.5
+
+[layout]
+engine = "fullimage"            # Web/CLI 当前主线；legacy 仍保留可切换
 
 [paths]
 inputs = "inputs"
