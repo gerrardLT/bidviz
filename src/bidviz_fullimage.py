@@ -34,6 +34,7 @@ BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "src"))
 
 PROMPT_TEMPLATE = BASE / "prompts" / "fullpage.md"
+COVER_TEMPLATE = BASE / "prompts" / "cover.md"
 OUT_DIR_NAME = "work/fullimage"
 LEDGER_NAME = "ledger.json"
 SPLIT_CHARS = 1500          # 超过则分页（1225 字的 S003 单页效果已验证）
@@ -239,10 +240,24 @@ def _hierarchy(root: Path, sid: str, page_blocks: list[tuple[str, str]], page_in
 # ---------------------------------------------------------------- 提示词
 
 
+def is_cover(root: Path, sid: str) -> bool:
+    """封面/总述节：使用专用封面提示词，不注入正文层级。"""
+    import bidviz_plan as plan_mod
+    pp = plan_mod.load_page_plan(root) or {}
+    entry = pp.get("sections", {}).get(sid) or {}
+    pages = entry.get("pages") or []
+    title = (pages[0].get("title") or {}) if pages else {}
+    text = f"{title.get('chapter', '')} {title.get('section', '')}"
+    return sid.upper() == "S001" or "封面" in text
+
+
 def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
                           total_pages: int = 1,
                           page_blocks: list[tuple[str, str]] | None = None) -> dict[str, Any]:
-    """用户格式提示词：通用段（prompts/fullpage.md）+ 章节层级 + 按类语汇 + 原文分段。"""
+    """用户格式提示词：通用段（prompts/fullpage.md）+ 章节层级 + 按类语汇 + 原文分段。
+
+    封面/总述节走专用 cover.md：不出现任何章节标题，不携带正文层级。
+    """
     root = Path(root)
     if page_blocks is None:
         page_blocks = [b for p in split_pages(_section_blocks(root, sid)) for b in p]
@@ -256,6 +271,17 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
     main = page.get("main_class") or entry.get("main_class") or "B"
 
     source_text = "\n".join(t for _k, t in page_blocks)
+
+    if is_cover(root, sid):
+        cfg = _cfg()
+        prompt = (COVER_TEMPLATE.read_text(encoding="utf-8")
+                  .replace("{{project_name}}", cfg.name)
+                  .replace("{{voltage}}", cfg.voltage)
+                  .replace("{{doc_type}}", cfg.doc_type))
+        return {"prompt": prompt, "hidden": [t for _k, t in page_blocks], "cover": True,
+                "meta": {"sid": sid, "main_class": main, "page": page_no,
+                         "total": total_pages, "chars": len(source_text)}}
+
     page_note = ("\n本页只编排上面给出的本页主题与原文分段；"
                  "不要重复其他页面已经呈现的内容，不要编造分段之外的工序或参数，严禁标注页码或任何（续）字样。"
                  if total_pages > 1 else "")
@@ -269,7 +295,7 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
               .replace("{{class_imagery}}", CLASS_IMAGERY.get(main, CLASS_IMAGERY["B"]))
               .replace("{{page_note}}", page_note)
               .replace("{{source_text}}", source_text))
-    return {"prompt": prompt, "hidden": [t for _k, t in page_blocks],
+    return {"prompt": prompt, "hidden": [t for _k, t in page_blocks], "cover": False,
             "meta": {"sid": sid, "main_class": main, "page": page_no,
                      "total": total_pages, "chars": len(source_text)}}
 
@@ -338,7 +364,8 @@ def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
                            "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
     t0 = time.time()
     last_err = ""
-    refs = [ANCHOR_REF] if ANCHOR_REF.exists() else []
+    # 封面页不传参考图，避免模型照抄参考图里的章节标题与正文
+    refs = [] if built.get("cover") else ([ANCHOR_REF] if ANCHOR_REF.exists() else [])
     rerolls = 0
 
     for prov_name, model_name in providers_to_try:

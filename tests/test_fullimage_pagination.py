@@ -67,6 +67,19 @@ class FullimagePaginationTests(unittest.TestCase):
         self.assertEqual(hierarchy[1], "- 第一节")
         self.assertEqual(hierarchy[2], "- 一、主题")
 
+    @unittest.skipUnless((BASE / "projects/anke-35kv/work/page-plan.json").exists(), "anke fixture missing")
+    def test_cover_uses_dedicated_prompt_without_chapter_titles(self):
+        root = BASE / "projects/anke-35kv"
+        load_cfg(root)
+        self.assertTrue(fi.is_cover(root, "S001"))
+        self.assertFalse(fi.is_cover(root, "S002"))
+        blocks = fi._section_blocks(root, "S001")
+        built = fi.build_fullpage_prompt(root, "S001", 1, 1, fi.split_pages(blocks)[0])
+        self.assertTrue(built["cover"])
+        self.assertIn("封面页", built["prompt"])
+        self.assertNotIn("第三章 实施方案", built["prompt"])
+        self.assertNotIn("第一节 项目总体实施方案", built["prompt"])
+
     @unittest.skipUnless((BASE / "projects/anke-35kv/work/blocks.json").exists(), "anke fixture missing")
     def test_real_multipage_sections_are_bounded_and_distinct(self):
         root = BASE / "projects/anke-35kv"
