@@ -142,8 +142,11 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
                  "不要编造分段之外的工序或参数，不要自行标注页码。" if total_pages > 1 else "")
 
     tpl = PROMPT_TEMPLATE.read_text(encoding="utf-8")
+    from bidviz_config import get as _cfg2
+    project_name = _cfg2().name
     prompt = (tpl
               .replace("{{chapter_hierarchy}}", "\n".join(_hierarchy(root, sid)))
+              .replace("{{project_name}}", project_name)
               .replace("{{class_imagery}}", CLASS_IMAGERY.get(main, CLASS_IMAGERY["B"]))
               .replace("{{page_note}}", page_note)
               .replace("{{source_text}}", source_text))
