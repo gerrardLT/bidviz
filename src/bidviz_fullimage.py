@@ -221,14 +221,14 @@ def page_topic(all_blocks: list[tuple[str, str]], page_blocks: list[tuple[str, s
         secondary = page_secondary
         return f"{primary} / {secondary}" if primary else secondary
     topic = f"{primary} / {secondary}" if primary and secondary else (primary or secondary)
-    return f"{topic}（续）" if topic and page_index > 1 else topic
+    return topic
 
 
 def _hierarchy(root: Path, sid: str, page_blocks: list[tuple[str, str]], page_index: int) -> list[str]:
-    """章节层级：章 / 节 / 本页实际主题。"""
+    """章节层级：章 / 节 / 本页实际主题（不加任何“（续）”后缀）。"""
     pp = __import__("bidviz_plan").load_page_plan(root) or {}
     page = pp["sections"][sid]["pages"][0]
-    section_title = page["title"]["section"] + ("（续）" if page_index > 1 else "")
+    section_title = page["title"]["section"]
     lines = [f"- {page['title']['chapter']}", f"- {section_title}"]
     topic = page_topic(_section_blocks(root, sid), page_blocks, page_index)
     if topic:
@@ -256,9 +256,8 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
     main = page.get("main_class") or entry.get("main_class") or "B"
 
     source_text = "\n".join(t for _k, t in page_blocks)
-    # 多页节页注：不写"第N/M页"（会诱导模型画页码），只说明本页编排范围
-    page_note = ("\n本页为该节多页排版中的一页，只编排上面给出的本页主题与原文分段；"
-                 "不要重复上一页已经呈现的内容，不要编造分段之外的工序或参数，不要自行标注页码。"
+    page_note = ("\n本页只编排上面给出的本页主题与原文分段；"
+                 "不要重复其他页面已经呈现的内容，不要编造分段之外的工序或参数，严禁标注页码或任何（续）字样。"
                  if total_pages > 1 else "")
 
     tpl = PROMPT_TEMPLATE.read_text(encoding="utf-8")

@@ -33,12 +33,12 @@ class FullimagePaginationTests(unittest.TestCase):
         topics = [fi.page_topic(blocks, page, i) for i, page in enumerate(pages, 1)]
         self.assertEqual(topics, ["一、主题甲", "二、主题乙"])
 
-    def test_continuation_gets_suffix(self):
+    def test_continuation_without_suffix(self):
         blocks = [("heading", "一、超长主题"), ("body", "甲" * 1000), ("body", "乙" * 1000)]
         pages = fi.split_pages(blocks)
         self.assertEqual(len(pages), 2)
         self.assertEqual(fi.page_topic(blocks, pages[0], 1), "一、超长主题")
-        self.assertEqual(fi.page_topic(blocks, pages[1], 2), "一、超长主题（续）")
+        self.assertEqual(fi.page_topic(blocks, pages[1], 2), "一、超长主题")
 
     def test_secondary_topic_is_in_page_topic(self):
         blocks = [
@@ -50,7 +50,7 @@ class FullimagePaginationTests(unittest.TestCase):
         self.assertIn("（一）前半", fi.page_topic(blocks, pages[0], 1))
         self.assertIn("（二）后半", fi.page_topic(blocks, pages[1], 2))
 
-    def test_hierarchy_marks_section_continuation(self):
+    def test_hierarchy_does_not_mark_continuation(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             work = root / "work"
@@ -64,8 +64,8 @@ class FullimagePaginationTests(unittest.TestCase):
                 hierarchy = fi._hierarchy(root, "S001", [("body", "正文")], 2)
             finally:
                 fi._section_blocks = old
-        self.assertEqual(hierarchy[1], "- 第一节（续）")
-        self.assertEqual(hierarchy[2], "- 一、主题（续）")
+        self.assertEqual(hierarchy[1], "- 第一节")
+        self.assertEqual(hierarchy[2], "- 一、主题")
 
     @unittest.skipUnless((BASE / "projects/anke-35kv/work/blocks.json").exists(), "anke fixture missing")
     def test_real_multipage_sections_are_bounded_and_distinct(self):
