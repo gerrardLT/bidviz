@@ -201,8 +201,13 @@ def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
         return {"sid": sid, "stem": stem, "skipped": True}
 
     cfg = _cfg()
-    cred = provider_credentials(cfg.provider)
-    api = bidviz.ImageAPI(base_url=cred["baseUrl"], api_key=cred["apiKey"], model=cfg.model)
+    providers_to_try = [
+        (cfg.provider, cfg.model),
+    ]
+    fb_p = getattr(cfg, "raw", {}).get("image", {}).get("fallback_provider")
+    fb_m = getattr(cfg, "raw", {}).get("image", {}).get("fallback_model", "gpt-image-2-2K/4K")
+    if fb_p and fb_p != cfg.provider:
+        providers_to_try.append((fb_p, fb_m))
 
     rec: dict[str, Any] = {"sid": sid, "stem": stem, "page": page_no, "variant": variant,
                            "chars": built["meta"]["chars"],
@@ -211,44 +216,57 @@ def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
     last_err = ""
     refs = [ANCHOR_REF] if ANCHOR_REF.exists() else []
     rerolls = 0
-    # 外层：供应商限流（503）退避 + 尺寸抽卡重掷；内层：尺寸回退链
-    while True:
-        for attempt in range(1, 4):
-            for size in size_chain():
-                try:
-                    api.generate(built["prompt"], out, references=refs,
-                                 recorder=rec, size=size)
-                    from PIL import Image
-                    w, h = Image.open(out).size
-                    rec.update({"ok": True, "requested": size, "actual": f"{w}x{h}",
-                                "sec": round(time.time() - t0, 1),
-                                "kb": round(out.stat().st_size / 1024),
-                                "attempts": attempt, "rerolls": rerolls})
-                    if f"{w}x{h}" != size:
-                        rec["downgraded"] = True
-                    prompt_snap.write_text(built["prompt"], encoding="utf-8")
-                    break
-                except Exception as exc:
-                    last_err = f"{type(exc).__name__}: {str(exc)[:160]}"
-                    out.unlink(missing_ok=True)
-                    continue
-            if rec.get("ok"):
-                break
-            if "503" in last_err or "tokens" in last_err.lower():
-                wait = 90 * attempt          # 池子恢复需要时间，指数等待
-                print(f"    [wait] 供应商限流，{wait}s 后重试（第 {attempt}/3 次）", flush=True)
-                time.sleep(wait)
-            else:
-                break
-        # 尺寸验证重掷（taomu 抽卡）：宽度不足则丢弃重画（按次收费，重掷=再来一次）
-        from PIL import Image
-        if rec.get("ok") and Image.open(out).size[0] < MIN_WIDTH and rerolls < REROLL_MAX:
-            rerolls += 1
-            print(f"    [reroll] {stem} 宽度不足 {MIN_WIDTH}，重掷 {rerolls}/{REROLL_MAX}", flush=True)
-            out.unlink(missing_ok=True)
-            rec["ok"] = False
+
+    for prov_name, model_name in providers_to_try:
+        try:
+            cred = provider_credentials(prov_name)
+            api = bidviz.ImageAPI(base_url=cred["baseUrl"], api_key=cred["apiKey"], model=model_name)
+            print(f"  [通道] 使用 {prov_name} ({model_name}) ...", flush=True)
+        except Exception as e:
+            print(f"  [通道跳过] {prov_name}: {e}", flush=True)
             continue
-        break
+
+        while True:
+            for attempt in range(1, 4):
+                for size in size_chain():
+                    try:
+                        api.generate(built["prompt"], out, references=refs,
+                                     recorder=rec, size=size)
+                        from PIL import Image
+                        w, h = Image.open(out).size
+                        rec.update({"ok": True, "provider": prov_name, "model": model_name,
+                                    "requested": size, "actual": f"{w}x{h}",
+                                    "sec": round(time.time() - t0, 1),
+                                    "kb": round(out.stat().st_size / 1024),
+                                    "attempts": attempt, "rerolls": rerolls})
+                        if f"{w}x{h}" != size:
+                            rec["downgraded"] = True
+                        prompt_snap.write_text(built["prompt"], encoding="utf-8")
+                        break
+                    except Exception as exc:
+                        last_err = f"{type(exc).__name__}: {str(exc)[:160]}"
+                        out.unlink(missing_ok=True)
+                        continue
+                if rec.get("ok"):
+                    break
+                if "503" in last_err or "tokens" in last_err.lower():
+                    wait = 30 * attempt
+                    print(f"    [wait] {prov_name} 限流，{wait}s 后重试...", flush=True)
+                    time.sleep(wait)
+                else:
+                    break
+
+            if rec.get("ok") and Image.open(out).size[0] < MIN_WIDTH and rerolls < REROLL_MAX:
+                rerolls += 1
+                print(f"    [reroll] {stem} 宽度不足 {MIN_WIDTH}，重掷 {rerolls}/{REROLL_MAX}", flush=True)
+                out.unlink(missing_ok=True)
+                rec["ok"] = False
+                continue
+            break
+
+        if rec.get("ok"):
+            break
+        print(f"  [通道回退] {prov_name} 失败: {last_err}，尝试下一通道...", flush=True)
     if not rec.get("ok"):
         rec.update({"ok": False, "error": last_err, "sec": round(time.time() - t0, 1)})
 
