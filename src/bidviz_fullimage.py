@@ -37,6 +37,10 @@ OUT_DIR_NAME = "work/fullimage"
 LEDGER_NAME = "ledger.json"
 SPLIT_CHARS = 1500          # 超过则分页（1225 字的 S003 单页效果已验证）
 MAX_PAGES = 3               # D4：每节 ≤3 页
+MIN_WIDTH = 2048            # 尺寸下限（taomu 抽卡重掷阈值，2026-10-17 拍板）
+REROLL_MAX = 3              # 尺寸重掷上限
+# 风格/框架锚定参考图（AI 图内+参考图锚定方案；样图 1 = 用户签认的框架基调）
+ANCHOR_REF = BASE / "docs" / "example-image" / "ChatGPT_图像_2026年10月16日_10_21_30-1.png"
 
 
 def size_chain() -> list[str]:
@@ -133,8 +137,9 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
     main = page.get("main_class") or entry.get("main_class") or "B"
 
     source_text = "\n".join(t for _k, t in page_blocks)
-    page_note = (f"\n本页为该节第 {page_no}/{total_pages} 页，只编排上面给出的原文分段；"
-                 f"不要编造分段之外的工序或参数。" if total_pages > 1 else "")
+    # 多页节页注：不写"第N/M页"（会诱导模型画页码），只说明本页编排范围
+    page_note = ("\n本页为该节多页排版中的一页，只编排上面给出的原文分段；"
+                 "不要编造分段之外的工序或参数，不要自行标注页码。" if total_pages > 1 else "")
 
     tpl = PROMPT_TEMPLATE.read_text(encoding="utf-8")
     prompt = (tpl
@@ -201,33 +206,46 @@ def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
                            "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
     t0 = time.time()
     last_err = ""
-    # 外层：供应商限流（503 tokens pool）退避重试；内层：尺寸回退链
-    for attempt in range(1, 4):
-        for size in size_chain():
-            try:
-                api.generate(built["prompt"], out, recorder=rec, size=size)
-                from PIL import Image
-                w, h = Image.open(out).size
-                rec.update({"ok": True, "requested": size, "actual": f"{w}x{h}",
-                            "sec": round(time.time() - t0, 1),
-                            "kb": round(out.stat().st_size / 1024),
-                            "attempts": attempt})
-                if f"{w}x{h}" != size:
-                    rec["downgraded"] = True
-                prompt_snap.write_text(built["prompt"], encoding="utf-8")
+    refs = [ANCHOR_REF] if ANCHOR_REF.exists() else []
+    rerolls = 0
+    # 外层：供应商限流（503）退避 + 尺寸抽卡重掷；内层：尺寸回退链
+    while True:
+        for attempt in range(1, 4):
+            for size in size_chain():
+                try:
+                    api.generate(built["prompt"], out, references=refs,
+                                 recorder=rec, size=size)
+                    from PIL import Image
+                    w, h = Image.open(out).size
+                    rec.update({"ok": True, "requested": size, "actual": f"{w}x{h}",
+                                "sec": round(time.time() - t0, 1),
+                                "kb": round(out.stat().st_size / 1024),
+                                "attempts": attempt, "rerolls": rerolls})
+                    if f"{w}x{h}" != size:
+                        rec["downgraded"] = True
+                    prompt_snap.write_text(built["prompt"], encoding="utf-8")
+                    break
+                except Exception as exc:
+                    last_err = f"{type(exc).__name__}: {str(exc)[:160]}"
+                    out.unlink(missing_ok=True)
+                    continue
+            if rec.get("ok"):
                 break
-            except Exception as exc:
-                last_err = f"{type(exc).__name__}: {str(exc)[:160]}"
-                out.unlink(missing_ok=True)
-                continue
-        if rec.get("ok"):
-            break
-        if "503" in last_err or "tokens" in last_err.lower():
-            wait = 90 * attempt          # 池子恢复需要时间，指数等待
-            print(f"    [wait] 供应商限流，{wait}s 后重试（第 {attempt}/3 次）", flush=True)
-            time.sleep(wait)
-        else:
-            break
+            if "503" in last_err or "tokens" in last_err.lower():
+                wait = 90 * attempt          # 池子恢复需要时间，指数等待
+                print(f"    [wait] 供应商限流，{wait}s 后重试（第 {attempt}/3 次）", flush=True)
+                time.sleep(wait)
+            else:
+                break
+        # 尺寸验证重掷（taomu 抽卡）：宽度不足则丢弃重画（按次收费，重掷=再来一次）
+        from PIL import Image
+        if rec.get("ok") and Image.open(out).size[0] < MIN_WIDTH and rerolls < REROLL_MAX:
+            rerolls += 1
+            print(f"    [reroll] {stem} 宽度不足 {MIN_WIDTH}，重掷 {rerolls}/{REROLL_MAX}", flush=True)
+            out.unlink(missing_ok=True)
+            rec["ok"] = False
+            continue
+        break
     if not rec.get("ok"):
         rec.update({"ok": False, "error": last_err, "sec": round(time.time() - t0, 1)})
 
@@ -262,13 +280,19 @@ def chapter_sids(root: Path, chapter_kw: str) -> list[str]:
 
 
 def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path) -> Path:
-    """整图页（取每节 p1 或最优变体）+ 隐藏层原文 → A3 竖版 PDF。"""
+    """整图页（等比无损置入）+ 矢量全局页码 + 隐藏层原文 → A3 竖版 PDF。
+
+    页码方案（2026-10-17 拍板）：AI 图内禁止画页码；汇编时在页面底部 24pt 白边
+    写矢量页码「— N —」，全册按节顺序连续编号（1..N，跨章累计）。
+    """
     import bidviz_vector as bv
 
     root = Path(root)
     bv.set_page("A3", "portrait")
     sheet = bv.Sheet(out_pdf)
+    footer_h = 24.0                     # 底部页码白边高（图不进入此带）
     n_pages = 0
+    global_no = 0
     for sid in sids:
         pages = split_pages(_section_blocks(root, sid))
         for i, page_blocks in enumerate(pages, 1):
@@ -277,17 +301,22 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path) -> Path:
             if not cands:
                 continue
             img = max(cands, key=lambda p: p.stat().st_size)
-            sheet.image(img, 0, 0, sheet.w, sheet.h, dpi=200, fit="cover",
-                        anchor=(0.5, 0.5))
+            global_no += 1
+            # 方案 A1：等比包含（contain），图完整放入标题区…页脚带之间
+            sheet.image(img, 0, 0, sheet.w, sheet.h - footer_h, dpi=200, fit="contain")
+            # 矢量全局页码：底部白带居中「— N —」
+            muted = "#5a6e7c"
+            sheet.text(sheet.w / 2, sheet.h - footer_h + 7, f"— {global_no} —",
+                       9.0, False, muted, align="center")
             built = build_fullpage_prompt(root, sid, i, len(pages), page_blocks)
-            hy = sheet.h - 30 - len(built["hidden"]) * 8.4
+            hy = sheet.h - footer_h - 12 - len(built["hidden"]) * 8.4
             for line in built["hidden"]:
                 sheet.hidden_text(20, max(hy, 20), line[:160], 6.0)
                 hy += 8.4
             sheet.c.showPage()
             n_pages += 1
     sheet.c.save()
-    print(f"[OK] fullimage 汇编：{n_pages} 页 → {out_pdf}")
+    print(f"[OK] fullimage 汇编：{n_pages} 页（全局页码 1..{global_no}）→ {out_pdf}")
     return out_pdf
 
 
