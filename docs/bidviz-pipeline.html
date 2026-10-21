@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BidViz 全图生成链路 · 步骤与提示词</title>
+<style>
+:root{
+  --navy:#0b4776; --blue:#0874bd; --pale:#eaf3f9; --bg:#f4f7fa; --panel:#ffffff;
+  --text:#20313f; --muted:#637887; --line:#c8d7e2; --green:#18864b; --greenbg:#e5f5eb;
+  --orange:#b45d08; --orangebg:#fff3d8; --red:#b42318; --redbg:#fdebea;
+  --codebg:#0d1b26; --codetext:#dbe9f2;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:"Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+     background:var(--bg);color:var(--text);display:grid;grid-template-columns:250px 1fr;overflow:hidden}
+aside{background:#092f50;color:#fff;padding:22px 14px;overflow:auto}
+aside h1{font-size:18px;margin:0 8px 6px}
+aside p{font-size:12px;color:#b9d3e5;margin:0 8px 18px;line-height:1.6}
+.nav{display:block;width:100%;border:0;background:transparent;color:#cce0ee;text-align:left;
+     padding:9px 11px;border-radius:8px;margin:3px 0;cursor:pointer;font-size:13px}
+.nav:hover,.nav.on{background:#0f5b91;color:#fff}
+.nav b{color:#fff;margin-right:6px}
+main{overflow:auto;padding:28px 34px 100px}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px 28px;margin-bottom:18px}
+.hero h2{font-size:26px;color:var(--navy);margin:0 0 8px}
+.hero p{color:var(--muted);margin:0;line-height:1.7}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.stat{background:var(--pale);border:1px solid var(--line);border-radius:9px;padding:9px 13px;font-size:12.5px}
+.stat b{color:var(--navy);font-size:16px;display:block}
+.flow{display:flex;gap:10px;flex-wrap:wrap;padding:6px 2px 16px}
+.step{min-width:150px;flex:1;background:#fff;border:1px solid var(--blue);border-radius:10px;padding:12px}
+.step .n{display:inline-block;background:var(--navy);color:#fff;border-radius:6px;
+         font-size:11px;padding:1px 7px;margin-bottom:7px}
+.step b{display:block;color:var(--navy);font-size:13.5px;margin-bottom:5px}
+.step small{color:var(--muted);font-size:11.5px;line-height:1.55;display:block}
+.arrow{display:flex;align-items:center;color:var(--blue);font-size:22px;min-width:14px}
+section.sec{display:none;max-width:1180px;margin:auto}
+section.sec.on{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;margin:14px 0}
+.card h3{margin:0 0 12px;color:var(--navy);font-size:18px}
+.card p{line-height:1.7;margin:8px 0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.chip{background:var(--pale);border:1px solid var(--line);border-radius:7px;padding:5px 10px;
+      font-size:12px;color:#385a72}
+.chip.g{background:var(--greenbg);border-color:#9ed3b1;color:#166534}
+.chip.o{background:var(--orangebg);border-color:#e8c37e;color:#92400e}
+.chip.r{background:var(--redbg);border-color:#e5a7a2;color:#b42318}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+th{background:var(--navy);color:#fff;text-align:left;padding:9px}
+td{border:1px solid var(--line);padding:9px;vertical-align:top;line-height:1.6}
+tr:nth-child(even) td{background:#f8fbfd}
+pre{background:var(--codebg);color:var(--codetext);border-radius:10px;padding:16px;
+    overflow:auto;font-family:"Cascadia Code","Consolas","Microsoft YaHei",monospace;
+    font-size:12.5px;line-height:1.62;max-height:520px;white-space:pre-wrap;word-break:break-word}
+pre.short{max-height:360px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0}
+.toolbar b{color:var(--navy);font-size:13px}
+button.copy{background:var(--blue);color:#fff;border:0;border-radius:7px;padding:7px 13px;
+            font-size:12px;cursor:pointer;font-weight:700}
+button.copy:hover{background:#0a5f9c}
+.note{border-left:5px solid var(--orange);background:var(--orangebg);padding:12px 14px;border-radius:6px;line-height:1.7}
+.ok{border-left:5px solid var(--green);background:var(--greenbg);padding:12px 14px;border-radius:6px;line-height:1.7}
+.bad{border-left:5px solid var(--red);background:var(--redbg);padding:12px 14px;border-radius:6px;line-height:1.7}
+.hl{background:#fff2a8;color:#5a4a00;padding:0 3px;border-radius:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mini{font-size:12.5px;color:var(--muted)}
+@media(max-width:900px){body{grid-template-columns:1fr}aside{display:none}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside>
+  <h1>BidViz 生成链路</h1>
+  <p>每一步的输入、输出、代码位置与真实提示词。点击左侧导航查看。</p>
+  <nav id="nav"></nav>
+</aside>
+<main>
+  <div class="hero">
+    <h2>施工组织设计图册 · 全图生成链路</h2>
+    <p>从 Word/PDF 解析到 103 页 A3 竖版 PDF 的完整步骤。所有提示词均为仓库当前真实内容，可一键复制。</p>
+    <div class="stats">
+      <div class="stat"><b>58</b>节</div>
+      <div class="stat"><b>103</b>页</div>
+      <div class="stat"><b>api7900</b>gpt-image-2</div>
+      <div class="stat"><b>2048×2896</b>2K 竖版</div>
+      <div class="stat"><b>~83s</b>平均每页</div>
+      <div class="stat"><b>¥0.08</b>每张</div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><span class="n">01</span><b>解析 ingest</b><small>Word/PDF → blocks.json / pages.json</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">02</span><b>分类 classify</b><small>57 节 → 主类/辅类/内容块</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">03</span><b>页规划 page-plan</b><small>KPI / 保留段 / 表格 / 页数预算</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">04</span><b>语义分页</b><small>按一级/二级主题切页，标注续页</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">05</span><b>提示词构建</b><small>fullpage.md / cover.md + 逐字原文</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">06</span><b>生图</b><small>api7900 + 参考图 + 重试/重掷</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">07</span><b>论文审计</b><small>尺寸/页码/署名/关键串</small></div>
+    <i class="arrow">→</i>
+    <div class="step"><span class="n">08</span><b>PDF 汇编</b><small>contain + 全局页码 + 隐藏层</small></div>
+  </div>
+
+  <section class="sec on" id="s00">
+    <div class="card">
+      <h3>00 · 链路总览</h3>
+      <p>整条链路分为<strong>决策层</strong>（人/规则决定内容与版式）、<strong>执行层</strong>（AI 生图 + 代码确定性排版）、<strong>验证层</strong>（自动门禁 + 人工签认）。</p>
+      <div class="chips">
+        <span class="chip g">决策层：分类 / 页规划 / 提示词</span>
+        <span class="chip o">执行层：AI 生图 / 分页 / 汇编</span>
+        <span class="chip r">验证层：尺寸 / 文字 / 页码 / 签认</span>
+      </div>
+      <table>
+        <tr><th>步骤</th><th>输入</th><th>输出</th><th>代码位置</th></tr>
+        <tr><td>01 解析</td><td>inputs/*.docx 或 *.pdf</td><td>work/blocks.json、pages.json、page-media-map.json</td><td>src/run_pipeline.py、src/bidviz_v2.py</td></tr>
+        <tr><td>02 分类</td><td>blocks.json</td><td>work/layout-classification.json、classification.md</td><td>src/bidviz_classify.py</td></tr>
+        <tr><td>03 页规划</td><td>分类 + blocks</td><td>work/page-plan.json</td><td>src/bidviz_plan.py</td></tr>
+        <tr><td>04 语义分页</td><td>节内 blocks</td><td>页块列表 + 本页主题</td><td>src/bidviz_fullimage.py（split_pages / page_topic）</td></tr>
+        <tr><td>05 提示词</td><td>页块 + 章/节/主题 + 项目配置</td><td>每页完整提示词快照</td><td>prompts/fullpage.md、prompts/cover.md、build_fullpage_prompt()</td></tr>
+        <tr><td>06 生图</td><td>提示词 + 参考图</td><td>work/fullimage/Sxxx_pN.png</td><td>src/bidviz_fullimage.py（generate_page）</td></tr>
+        <tr><td>07 审计</td><td>PNG + 原文</td><td>门禁结果/候选记录</td><td>src/bidviz_fullimage_audit.py、bidviz_fullimage_store.py</td></tr>
+        <tr><td>08 汇编</td><td>全部 PNG + 原文</td><td>output/施工组织设计-图册-A3-fullimage.pdf</td><td>build_fullimage_pdf()</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec" id="s01">
+    <div class="card">
+      <h3>01 · 解析 ingest</h3>
+      <p>把 Word/PDF 解析成结构化块。每个块保留来源页、章节路径与 sha256，可反查原文。</p>
+      <div class="chips"><span class="chip">输入：.docx / .pdf</span><span class="chip g">输出：blocks.json</span><span class="chip">命令：bidviz ingest anke-35kv</span></div>
+      <table>
+        <tr><th>产物</th><th>内容</th></tr>
+        <tr><td>blocks.json</td><td>每块：block_id、source_page、kind（heading/body）、section_path、text、sha256</td></tr>
+        <tr><td>pages.json</td><td>按页聚合的块索引</td></tr>
+        <tr><td>page-media-map.json</td><td>源文档每页的内嵌图片清单（参考图/素材来源）</td></tr>
+      </table>
+      <div class="note">这是唯一写原文的环节。后续所有编辑都不改 blocks.json，而是通过 edits.json 投影。</div>
+    </div>
+  </section>
+
+  <section class="sec" id="s02">
+    <div class="card">
+      <h3>02 · 分类 classify</h3>
+      <p>对每一节判断 8 类内容形态（A–H）与建议图表，形成人审版 markdown + 机读 json。</p>
+      <div class="chips"><span class="chip">输入：blocks.json</span><span class="chip g">输出：layout-classification.json / classification.md</span><span class="chip">门禁：五字段 / 节覆盖 / 原起始页单调</span></div>
+      <table>
+        <tr><th>类</th><th>内容形态</th><th>主图</th></tr>
+        <tr><td>A</td><td>总览目标型</td><td>范围关系图、目标条</td></tr>
+        <tr><td>B</td><td>工艺流程型</td><td>工序图、步骤示意</td></tr>
+        <tr><td>C</td><td>构造空间型</td><td>剖面图、节点图</td></tr>
+        <tr><td>D</td><td>参数资源型</td><td>选型表、参数表</td></tr>
+        <tr><td>E</td><td>计划时序型</td><td>阶段图、里程碑</td></tr>
+        <tr><td>F</td><td>组织协同型</td><td>组织图、职责表</td></tr>
+        <tr><td>G</td><td>检验清单型</td><td>检验表、核查清单</td></tr>
+        <tr><td>H</td><td>风险对策型</td><td>风险定位图、对策表</td></tr>
+      </table>
+      <div class="note">分类决定模板与 KPI 数量。安科项目 57 节主类已人工审过；总述节 S001 走封面专用通道。</div>
+    </div>
+  </section>
+
+  <section class="sec" id="s03">
+    <div class="card">
+      <h3>03 · 页规划 page-plan</h3>
+      <p>把分类结果转成每节的内容槽位：KPI、保留正文、表格、页数预算（≤3 页/节）。</p>
+      <table>
+        <tr><th>规则</th><th>内容</th></tr>
+        <tr><td>KPI 数量（D12）</td><td>A/B ≤3；C/E/H 1–2；D/F/G = 0</td></tr>
+        <tr><td>KPI 优先级</td><td>工期 &gt; 工程量 &gt; 关键型号；只取原文真实数值</td></tr>
+        <tr><td>保留段（D3）</td><td>A/B/C 保留 1–2 段关键原文；H 保留条件句；D/E/F/G 全表</td></tr>
+        <tr><td>表格</td><td>施工工序 / 参数与指标 / 风险与控制要求 / 材料与设备</td></tr>
+        <tr><td>页数预算</td><td>每节 ≤3 页，超出记 overflow</td></tr>
+      </table>
+      <div class="chips"><span class="chip">输入：分类 + blocks</span><span class="chip g">输出：work/page-plan.json</span><span class="chip">代码：src/bidviz_plan.py</span></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s04">
+    <div class="card">
+      <h3>04 · 语义分页</h3>
+      <p>先按一级主题（一、二、三…）成组，主题过长再按二级标题（（一）（二）…）拆；每页标记本页实际主题，续页不写“（续）”。</p>
+      <div class="two">
+        <div class="card">
+          <h3 style="font-size:15px">分页规则</h3>
+          <ul style="line-height:1.8;font-size:13px">
+            <li>一级主题优先成组，不拆散可完整放下的主题</li>
+            <li>单主题 &gt;1500 字 → 按二级标题拆</li>
+            <li>仍过长 → 按段落边界拆</li>
+            <li>总页数 ≤3，块顺序不变、每块只出现一次</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="font-size:15px">页主题示例（S002）</h3>
+          <table>
+            <tr><th>页</th><th>页面主题</th></tr>
+            <tr><td>P1</td><td>一、35kV主用电源电缆选型 / （一）电缆品牌选定范围</td></tr>
+            <tr><td>P2</td><td>二、高压专项测试型式报告 / （一）国家级第三方检测机构出具报告</td></tr>
+            <tr><td>P3</td><td>三、成品外护套标识 / 四、电缆装卸运输防护</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="bad">历史问题：旧版每页固定使用本节第一个三级标题，导致多页节标题重复。已由 page_topic 修复。</div>
+    </div>
+  </section>
+
+  <section class="sec" id="s05">
+    <div class="card">
+      <h3>05 · 提示词构建</h3>
+      <p>每页提示词 = 固定模板（风格与禁止项） + 本页章节层级 + 逐字原文。封面页走独立模板且不传参考图。</p>
+      <div class="chips">
+        <span class="chip">模板 A：prompts/fullpage.md（正文页）</span>
+        <span class="chip">模板 B：prompts/cover.md（封面页）</span>
+        <span class="chip g">注入：章 / 节 / 本页实际主题 / 原文分段</span>
+      </div>
+
+      <div class="toolbar"><b>模板 A 全文 · 正文页（占位符以黄色标出）</b><button class="copy" data-target="tplA">复制</button></div>
+      <pre id="tplA">为施工组织设计PDF文档创建一张高品质的A3竖版排版页，采用**现代工程技术图册风格**。
+
+【重要】只输出**一张**A3竖版单页（纵向，宽297mm×高420mm，高宽比1.414），是正文内容页——不是封面、不是扉页、不是左右对开跨页。参考图仅用于锚定页眉/标题区/页脚的样式，不要模仿其构图布局，全部内容编排进这一张竖版页面。
+
+以提供的原文全文作为内容参考，并**严格沿用参考图的页面框架**（页眉、标题区、页脚的形态、位置、样式与参考图完全一致，只替换文字内容）：
+
+<span class="hl">{{chapter_hierarchy}}</span>
+
+**页面框架契约（每页必须完全一样，仅文字不同）：**
+
+1. 页眉：白底细线夹层，左侧深蓝粗体章名，右侧灰色小字「<span class="hl">{{project_name}}</span>」加三道短斜线装饰。
+2. 章标题区：左侧深蓝斜切色块 + 深蓝大号粗体章标题 + 下方左粗右细渐变横线。
+3. 节标题条：小斜切块 + 深蓝中号粗体节标题 + 右延细线。
+4. 内容区：标题条以下、页脚以上的区域自由编排（图文混排/表格/示意，按原文内容自适应）。
+5. 页脚：一条浅灰细线 + 右下角浅蓝色高低错落的天际线剪影装饰。
+6. **页脚中央位置留空——绝对不要绘制任何页码、数字编号或"第N页"字样（页码由排版系统后期添加）。**
+
+**核心要求：**
+
+1. 尽可能完整保留原文正文、技术参数和工程含义，通过重新编排实现图文融合，不随意删减、概括或改写原文。**所有技术数值（尺寸、型号、电压、数量、百分比）必须逐字符照抄原文，不得改写或换算。**
+2. 将传统大段文字转换成更加直观的图文混排、结构化表格、工程示意图和信息模块。
+3. 图片主要用于展示施工场景、工程结构、施工工艺及空间关系；表格用于组织施工要求、技术参数和质量控制内容。
+4. 页面必须体现专业施工组织设计文件的严谨性，而不是宣传海报或PPT。
+
+**视觉风格：**
+
+- 页面规格：A3竖版，297×420mm。
+- 背景：纯白色。
+- 主色：深海军蓝，搭配浅蓝灰色。
+- 文字：深灰色正文，深蓝色标题。
+- 采用模块化网格、精确对齐、清晰的信息层级。
+- 使用精细分隔线、少量几何装饰和适当留白。
+- 图片采用<span class="hl">{{class_imagery}}</span>。
+- 统一图标、表格、标题栏和图注的设计语言。
+- 中文字体清晰易读，技术参数、编号和单位准确。
+- 表格具有清晰的行列关系及专业的工程技术文件质感。
+
+**负面清单（禁止事项）：**
+
+- 不要绘制页码或任何页码占位符。
+- 严禁在标题、正文、表格或图面任何位置绘制“（续）”、“续”、“续篇”等字样。
+- 不要编造设计单位、审核人、批准人、日期、图号、编号等署名信息。
+- 不要出现英文句子、Logo、水印、二维码。
+- 不要出现原文给定文字之外的编造内容。
+
+**最终效果：**
+
+形成高端、专业、严谨的工程技术报告页面。图文表格协调统一，信息密度适中，适合正式打印、工程汇报及施工组织设计文件。<span class="hl">{{page_note}}</span>
+
+**原文全文（内容参考，逐字保留技术参数，一字不改）：**
+
+<span class="hl">{{source_text}}</span></pre>
+
+      <div class="toolbar"><b>模板 B 全文 · 封面页（prompts/cover.md）</b><button class="copy" data-target="tplB">复制</button></div>
+      <pre id="tplB" class="short">为施工组织设计投标文件创建一张 A3 竖版**封面页**，采用现代工程技术图册风格。
+
+【本页性质】这是整册的封面及总述页，**不是正文内容页**；禁止出现任何章节标题、节标题或正文段落。
+
+【必须呈现的文字（逐字，不得增删）】
+
+- 项目名称：<span class="hl">{{project_name}}</span>
+- 工程名称：<span class="hl">{{project_name}} {{voltage}} 电力接入工程</span>
+- 文档名称：施工组织设计
+- 投标文件信息字段（原文存在但值为空，仅保留字段名，值留空）：
+  投标编号：
+  投标单位：
+  法人代表：
+  投标日期：
+
+【版面要求】
+
+1. 顶部或居中放置工程名称与文档名称，主标题深海军蓝、字号最大。
+2. 中部可放一条简洁的工程线稿装饰（输电塔、电缆、天际线），纯矢量线条，不使用照片。
+3. 下部以整齐的小字列出上述投标信息字段，字段名与留白值上下对齐。
+4. 页面留白充分、克制、庄重，像正式投标文件的封面，不像宣传海报。
+
+【视觉风格】
+
+- 页面规格：A3竖版，297×420mm。
+- 背景：纯白色。
+- 主色：深海军蓝，搭配浅蓝灰色。
+- 文字：深灰色正文，深蓝色标题。
+- 中文字体清晰易读，字距与行距舒展。
+- 使用精细分隔线与少量几何装饰。
+
+**负面清单（禁止事项）：**
+
+- 严禁出现任何章节标题、节标题或带编号的小标题（即原文中「第X章…」「第X节…」「一、…」「（一）…」这类结构行）。
+- 严禁出现正文段落、表格、KPI 数据卡、工序图或工程照片。
+- 不要绘制页码或任何页码占位符。
+- 不要编造投标编号、投标单位、法人代表、投标日期、资质、印章或签名。
+- 不要出现英文句子、Logo、水印、二维码。
+- 不要出现原文给定文字之外的编造内容。
+
+**最终效果：**
+
+形成一张正式、克制、可打印的投标文件封面页。</pre>
+
+      <div class="note">封面页特殊处理：不传参考图。否则模型会照抄参考图中的“第三章/第一节”等章节内容（已实测发生并修复）。</div>
+    </div>
+  </section>
+
+  <section class="sec" id="s06">
+    <div class="card">
+      <h3>06 · 生图</h3>
+      <div class="two">
+        <div class="card">
+          <h3 style="font-size:15px">调用参数</h3>
+          <table>
+            <tr><th>参数</th><th>值</th></tr>
+            <tr><td>供应商</td><td>api7900（https://api.790053500.com/v1）</td></tr>
+            <tr><td>模型</td><td>gpt-image-2</td></tr>
+            <tr><td>尺寸</td><td>2048×2896（A3 竖版 2K）</td></tr>
+            <tr><td>参考图</td><td>原始高清样板（仅正文页；封面页不传）</td></tr>
+            <tr><td>网络</td><td>HTTPS_PROXY=http://127.0.0.1:7897</td></tr>
+            <tr><td>重试</td><td>失败重试 3 次；宽度 &lt;2048 重掷最多 3 次</td></tr>
+            <tr><td>成本</td><td>约 ¥0.08/张</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3 style="font-size:15px">真实耗时对比</h3>
+          <table>
+            <tr><th>模式</th><th>耗时</th></tr>
+            <tr><td>直连，不传参考图</td><td>613 秒</td></tr>
+            <tr><td>7897 代理，不传参考图</td><td>97 秒</td></tr>
+            <tr><td>7897 代理 + 参考图</td><td>117 秒</td></tr>
+            <tr><td>全册平均（代理+参考图）</td><td>约 83 秒/页</td></tr>
+          </table>
+          <div class="ok">瓶颈是直连网络路径，不是参考图。代理后整册 103 页约 2.4 小时完成。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="s07">
+    <div class="card">
+      <h3>07 · 论文审计（自动门禁）</h3>
+      <p>每张候选图生成后先过自动检查，再进入人工审阅。阻断项不自动发布。</p>
+      <table>
+        <tr><th>检查</th><th>标准</th></tr>
+        <tr><td>文件完整性</td><td>PNG 可解码、非空</td></tr>
+        <tr><td>尺寸/方向</td><td>宽 ≥2048；竖版；比例接近 A3（±0.035）</td></tr>
+        <tr><td>参考图</td><td>正文页 reference_count ≥1；封面页为 0</td></tr>
+        <tr><td>AI 页码</td><td>OCR 不得出现 1/3、第N页、—N—</td></tr>
+        <tr><td>编造署名</td><td>不得出现设计单位/审核人/日期/图号</td></tr>
+        <tr><td>关键串</td><td>标题、KPI 数值、型号、单位、条件句逐字命中</td></tr>
+        <tr><td>普通正文</td><td>首/中/尾抽样；≥2 处缺失 → block</td></tr>
+      </table>
+      <div class="note">自动门禁只决定能否进入人工审阅，不能代替人工批准。Web 工作台的候选审阅/发布/回滚走 bidviz_fullimage_store.py。</div>
+    </div>
+  </section>
+
+  <section class="sec" id="s08">
+    <div class="card">
+      <h3>08 · PDF 汇编</h3>
+      <p>把 103 张整页图汇编成 A3 竖版 PDF，并补上可搜索的隐藏文本层。</p>
+      <table>
+        <tr><th>处理</th><th>规则</th></tr>
+        <tr><td>置入方式</td><td>contain 等比无损，不裁切上下</td></tr>
+        <tr><td>页码</td><td>底部 24pt 白带，矢量「— N —」，全册连续 1..103</td></tr>
+        <tr><td>隐藏层</td><td>PDF text render mode 3 写入原文分段，可 Ctrl+F、可反抽审计</td></tr>
+        <tr><td>DRAFT</td><td>未签认页可出带水印草稿，不覆盖正式 PDF</td></tr>
+      </table>
+      <div class="chips"><span class="chip g">103 页</span><span class="chip">页码 1..103 已程序校验</span><span class="chip">约 127MB</span></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s09">
+    <div class="card">
+      <h3>附 · 真实提示词样本 1：正文页 S003</h3>
+      <p>以下为生成 `S003_p1.png` 时实际发送的完整提示词（占位符已替换）。</p>
+      <div class="toolbar"><b>S003（第二节 土石方工程施工）</b><button class="copy" data-target="real1">复制</button></div>
+      <pre id="real1">为施工组织设计PDF文档创建一张高品质的A3竖版排版页，采用**现代工程技术图册风格**。
+
+【重要】只输出**一张**A3竖版单页（纵向，宽297mm×高420mm，高宽比1.414），是正文内容页——不是封面、不是扉页、不是左右对开跨页。参考图仅用于锚定页眉/标题区/页脚的样式，不要模仿其构图布局，全部内容编排进这一张竖版页面。
+
+以提供的原文全文作为内容参考，并**严格沿用参考图的页面框架**（页眉、标题区、页脚的形态、位置、样式与参考图完全一致，只替换文字内容）：
+
+- 第一章 供货安装方案与技术措施
+- 第二节 土石方工程施工
+- 一、土石方开挖及回填 / （一）电缆沟井排管土方开挖作业实施
+
+**页面框架契约（每页必须完全一样，仅文字不同）：**
+
+1. 页眉：白底细线夹层，左侧深蓝粗体章名，右侧灰色小字「安科生物项目」加三道短斜线装饰。
+2. 章标题区：左侧深蓝斜切色块 + 深蓝大号粗体章标题 + 下方左粗右细渐变横线。
+3. 节标题条：小斜切块 + 深蓝中号粗体节标题 + 右延细线。
+4. 内容区：标题条以下、页脚以上的区域自由编排（图文混排/表格/示意，按原文内容自适应）。
+5. 页脚：一条浅灰细线 + 右下角浅蓝色高低错落的天际线剪影装饰。
+6. **页脚中央位置留空——绝对不要绘制任何页码、数字编号或"第N页"字样（页码由排版系统后期添加）。**
+
+**核心要求：**
+
+1. 尽可能完整保留原文正文、技术参数和工程含义，通过重新编排实现图文融合，不随意删减、概括或改写原文。**所有技术数值（尺寸、型号、电压、数量、百分比）必须逐字符照抄原文，不得改写或换算。**
+2. 将传统大段文字转换成更加直观的图文混排、结构化表格、工程示意图和信息模块。
+3. 图片主要用于展示施工场景、工程结构、施工工艺及空间关系；表格用于组织施工要求、技术参数和质量控制内容。
+4. 页面必须体现专业施工组织设计文件的严谨性，而不是宣传海报或PPT。
+
+**视觉风格：**
+
+- 页面规格：A3竖版，297×420mm。
+- 背景：纯白色。
+- 主色：深海军蓝，搭配浅蓝灰色。
+- 文字：深灰色正文，深蓝色标题。
+- 采用模块化网格、精确对齐、清晰的信息层级。
+- 使用精细分隔线、少量几何装饰和适当留白。
+- 图片采用真实感工程场景、三维施工示意图。
+- 统一图标、表格、标题栏和图注的设计语言。
+- 中文字体清晰易读，技术参数、编号和单位准确。
+- 表格具有清晰的行列关系及专业的工程技术文件质感。
+
+**负面清单（禁止事项）：**
+
+- 不要绘制页码或任何页码占位符。
+- 严禁在标题、正文、表格或图面任何位置绘制“（续）”、“续”、“续篇”等字样。
+- 不要编造设计单位、审核人、批准人、日期、图号、编号等署名信息。
+- 不要出现英文句子、Logo、水印、二维码。
+- 不要出现原文给定文字之外的编造内容。
+
+**最终效果：**
+
+形成高端、专业、严谨的工程技术报告页面。图文表格协调统一，信息密度适中，适合正式打印、工程汇报及施工组织设计文件。
+
+**原文全文（内容参考，逐字保留技术参数，一字不改）：**
+
+一、土石方开挖及回填
+（一）电缆沟井排管土方开挖作业实施
+沿已完成测量放线定位的作业边界开展普通土开挖作业，控制开挖深度在2 至3 米区间 内，严格对齐电缆沟、工井、排管的设计作业面位置。选用斗容0.3m³的履带式挖掘机主导 开挖作业，开挖过程中预留150mm 厚的基底土层由人工清理找平，避免机械扰动基底原状土， 保证基底承载力符合设计要求。
+开挖作业同步跟进坡面防护前置措施，作业面挖出一段即清理一段坡面浮土，为后续挂 网喷C25 混凝土60 厚的放坡支护工序预留充足作业空间，坡面坡度全程按规范要求控制， 随时排查边坡开裂、滑移风险。开挖产生的临时堆土沿沟槽边缘安全距离外有序堆放，避免 堆载过量挤压边坡造成垮塌隐患。
+（二）分层回填土作业实施
+回填作业在电缆沟、工井主体结构及排管包封混凝土强度达到设计要求后启动，清理作 业面内的积水、杂物与建筑垃圾，确认回填范围内无外露锐边硬物破坏作业面防护层。
+1）筛选符合回填要求的素土作为回填主材，剔除粒径超过规范限值的大块石块、建筑 垃圾，保证回填土有机质含量控制在允许范围内。
+2）分层铺填控制每层虚铺厚度不超过300mm，采用12kN 夯击力的振动夯实机对每层土 体进行多遍碾压夯实，边角区域由人工持小型夯实工具补夯。
+3）每完成一层回填作业即取样送检，核实压实度指标符合市政道路施工相关规范要求， 检测合格后方可开展下一层回填作业，避免出现漏夯、虚填的质量隐患。
+（三）多余土方密闭外运作业实施
+作业面回填完成后归集剩余的所有多余土方，统一归集至现场指定的垃圾集中站区域临 时堆放，安排专人对堆土区域进行全覆盖抑尘处理，避免遗撒扬尘影响周边区域环境。
+1）选用额定载重10t 的密闭自卸汽车开展外运作业，装车过程中控制装载量不超出车 厢上沿，装车完成后对车厢顶部进行全覆盖密闭遮盖。
+2）车辆驶出施工区域前安排专人对轮胎、车身附着的泥土进行全面冲洗，防止带泥上 路污染周边已成型的市政道路路面。
+3）所有外运渣土统一运输至政府主管部门指定的消纳点处置，全程留存渣土运输处置 台账，记录每台车辆的外运车次、外运量与消纳地点信息，做到溯源可查，完全符合城市渣 土运输管理相关规定。
+（四）土方开挖过程质量安全管控
+开挖作业全程安排专职质量员旁站管控，随时复核沟槽底部的标高、宽度与边坡坡度， 采用水准仪与50m 钢卷尺联动校验，避免出现超挖、欠挖或边坡坡度不符合设计要求的问题。
+作业区域在行人车辆通行的出入口位置设置硬质隔离防护栏，悬挂明显的警示标牌，严禁无 关人员随意进入开挖作业区域。
+配置专职有限空间作业安全员全程盯守作业面，针对部分紧邻老旧电缆沟的开挖区段， 提前探明地下既有管线的走向与埋深，采取人工探挖方式确认管线位置后再开展机械开挖， 防止挖损既有运行管线。沟槽周边设置临时排水沟与集水井，及时抽排作业面内的积水，避 免基底被水长时间浸泡软化引发边坡失稳。</pre>
+
+      <div class="toolbar" style="margin-top:18px"><b>附 · 真实提示词样本 2：封面页 S001</b><button class="copy" data-target="real2">复制</button></div>
+      <pre id="real2" class="short">为施工组织设计投标文件创建一张 A3 竖版**封面页**，采用现代工程技术图册风格。
+
+【本页性质】这是整册的封面及总述页，**不是正文内容页**；禁止出现任何章节标题、节标题或正文段落。
+
+【必须呈现的文字（逐字，不得增删）】
+
+- 项目名称：安科生物项目
+- 工程名称：安科生物项目 35kV 电力接入工程
+- 文档名称：施工组织设计
+- 投标文件信息字段（原文存在但值为空，仅保留字段名，值留空）：
+  投标编号：
+  投标单位：
+  法人代表：
+  投标日期：
+
+【版面要求】
+
+1. 顶部或居中放置工程名称与文档名称，主标题深海军蓝、字号最大。
+2. 中部可放一条简洁的工程线稿装饰（输电塔、电缆、天际线），纯矢量线条，不使用照片。
+3. 下部以整齐的小字列出上述投标信息字段，字段名与留白值上下对齐。
+4. 页面留白充分、克制、庄重，像正式投标文件的封面，不像宣传海报。
+
+【视觉风格】
+
+- 页面规格：A3竖版，297×420mm。
+- 背景：纯白色。
+- 主色：深海军蓝，搭配浅蓝灰色。
+- 文字：深灰色正文，深蓝色标题。
+- 中文字体清晰易读，字距与行距舒展。
+- 使用精细分隔线与少量几何装饰。
+
+**负面清单（禁止事项）：**
+
+- 严禁出现任何章节标题、节标题或带编号的小标题（即原文中「第X章…」「第X节…」「一、…」「（一）…」这类结构行）。
+- 严禁出现正文段落、表格、KPI 数据卡、工序图或工程照片。
+- 不要绘制页码或任何页码占位符。
+- 不要编造投标编号、投标单位、法人代表、投标日期、资质、印章或签名。
+- 不要出现英文句子、Logo、水印、二维码。
+- 不要出现原文给定文字之外的编造内容。
+
+**最终效果：**
+
+形成一张正式、克制、可打印的投标文件封面页。</pre>
+    </div>
+  </section>
+</main>
+<script>
+const pages=[['s00','00 链路总览'],['s01','01 解析 ingest'],['s02','02 分类 classify'],['s03','03 页规划 page-plan'],['s04','04 语义分页'],['s05','05 提示词构建'],['s06','06 生图'],['s07','07 论文审计'],['s08','08 PDF 汇编'],['s09','附 真实提示词样本']];
+const nav=document.getElementById('nav');
+pages.forEach(([id,label],i)=>{const b=document.createElement('button');b.className='nav'+(i===0?' on':'');b.innerHTML=label;b.onclick=()=>{document.querySelectorAll('.nav').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelector('main').scrollTop=0};nav.appendChild(b)});
+document.querySelectorAll('button.copy').forEach(btn=>{btn.onclick=async()=>{const el=document.getElementById(btn.dataset.target);const text=el.innerText;try{await navigator.clipboard.writeText(text);btn.textContent='已复制';setTimeout(()=>btn.textContent='复制',1200)}catch(e){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);document.execCommand('copy');btn.textContent='已复制';setTimeout(()=>btn.textContent='复制',1200)}}});
+</script>
+</body>
+</html>
