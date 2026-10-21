@@ -99,8 +99,22 @@
   .pill.pending{background:#4a340b;color:var(--warn)} .pill.stale{background:#3e294e;color:#d8b4fe}
   .compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;background:#071018}
   .pane{border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:150px;display:flex;flex-direction:column}
-  .pane h4{font-size:10.5px;color:var(--mut);padding:5px 7px;background:#0d1f2b}
+  .pane h4{font-size:10.5px;color:var(--mut);padding:5px 7px;background:#0d1f2b;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .pane h4 .btn{padding:2px 7px;font-size:10px;font-weight:700}
   .pane img{width:100%;height:auto;display:block;cursor:zoom-in}.pane .ph{padding:42px 8px}
+  .imgwrap{position:relative;line-height:0}
+  .edit-layer{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+  .edit-box{position:absolute;border:2px solid #22d3ee;background:rgba(34,211,238,.16);
+            box-shadow:0 0 0 1px rgba(0,0,0,.65);pointer-events:none;display:none}
+  .edit-panel{margin:0 10px 9px;padding:9px;border:1px solid #1d5f7a;border-radius:6px;
+              background:#0a1620;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+  .edit-panel canvas{width:320px;max-width:100%;background:#000;border:1px solid var(--line);border-radius:4px}
+  .edit-fields{flex:1;min-width:210px;display:flex;flex-direction:column;gap:7px}
+  .edit-fields input{width:100%;background:#08131b;border:1px solid var(--line);color:var(--txt);
+                     border-radius:6px;padding:7px 9px;font-size:12.5px;outline:none}
+  .edit-fields input:focus{border-color:var(--acc)}
+  .edit-hint{font-size:10.5px;color:var(--mut);line-height:1.55}
+  .edit-hint b{color:var(--acc)}
   .audit{margin:0 10px 9px;padding:8px;border:1px solid var(--line);border-radius:6px;background:#0a1620;font-size:11px;line-height:1.55;color:var(--mut)}
   .audit .bad{color:var(--red)} .audit .warn{color:var(--warn)} .audit .good{color:var(--ok)}
   .review-note{width:100%;min-height:54px;margin:0 10px 8px;width:calc(100% - 20px)}
@@ -210,22 +224,23 @@ function auditHTML(f) {
   if (!c) return '<div class="audit">尚无候选门禁结果</div>';
   const checks = ((c.checks||{}).checks || []);
   const lines = checks.map(x => `<div class="${x.level==='block'?'bad':x.level==='warn'?'warn':'good'}">${x.level==='block'?'✕':x.level==='warn'?'!':'✓'} ${esc(x.message||x.code)}</div>`).join('');
-  return `<div class="audit"><b>候选 ${esc(c.version||'')} · ${esc(c.provider||'')} / ${esc(c.model||'')} · ${esc(c.actual_size||'')}</b>${lines || '<div>等待自动门禁</div>'}</div>`;
+  const ed = c.edit;
+  const editLine = ed ? `<div class="good">✎ 局部改字 ${esc(c.base_kind||'')}${c.base_version?(' '+vlabel(c.base_version)):''} → ${vlabel(c.version)} · 框 [${(ed.box||[]).join(', ')}] · “${esc(ed.text||'')}”</div>` : '';
+  return `<div class="audit"><b>候选 ${vlabel(c.version)} · ${esc(c.provider||'')} / ${esc(c.model||'')} · ${esc(c.actual_size||'')}</b>${editLine}${lines || '<div>等待自动门禁</div>'}</div>`;
 }
 
 function figHTML(s, f) {
-  if (DOC.mode !== 'fullimage') {
-    const shot = f.image ? `<img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="${esc(s.title)} 图${f.no}">`
-                         : `<div class="ph">尚未生成<br>点下方「重生此图」</div>`;
-    return `<div class="fig" data-s="${s.id}" data-no="${f.no}"><div class="shot">${shot}</div><div class="cap"><b>图 ${f.no} · ${esc(f.name||'')}</b><div>${esc(f.why||'')}</div><span class="gen">${esc(f.gen||'')}</span></div><div class="acts"><button class="btn" data-act="edit" data-s="${s.id}" data-no="${f.no}">编辑提示词</button><button class="btn" data-act="regen" data-s="${s.id}" data-no="${f.no}">重生此图</button></div></div>`;
-  }
-  const pub = f.image ? `<img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="已发布">` : '<div class="ph">尚无已发布版本</div>';
-  const cand = f.candidate_image ? `<img src="${f.candidate_image}?t=${f.candidate_ts||Date.now()}" loading="lazy" alt="候选">` : '<div class="ph">尚无候选图</div>';
+  const pubV = f.published && f.published.version;
+  const candV = f.candidate && f.candidate.version;
+  const pub = f.image ? `<div class="imgwrap"><img src="${f.image}?t=${f.image_ts}" loading="lazy" alt="已发布"></div>` : '<div class="ph">尚无已发布版本</div>';
+  const cand = f.candidate_image ? `<div class="imgwrap"><img src="${f.candidate_image}?t=${f.candidate_ts||Date.now()}" loading="lazy" alt="候选"></div>` : '<div class="ph">尚无候选图</div>';
+  const pubBtn = (f.image && pubV) ? `<button class="btn" data-act="local-edit" data-s="${s.id}" data-no="${f.no}" data-base="published" data-v="${pubV}">局部改字</button>` : '';
+  const candBtn = (f.candidate_image && candV) ? `<button class="btn" data-act="local-edit" data-s="${s.id}" data-no="${f.no}" data-base="candidate" data-v="${candV}">局部改字</button>` : '';
   const status = f.stale ? 'stale' : (f.status==='blocked'?'block':f.status==='published'?'pass':'pending');
   const label = f.stale?'提示词已过期':f.status==='blocked'?'候选已阻断':f.status==='published'?'已发布':f.status==='review'?'候选待审':'缺失/待生成';
   const v = f.candidate && f.candidate.version || '';
   return `<div class="fig" data-s="${s.id}" data-no="${f.no}">
-    <div class="compare"><div class="pane"><h4>当前已发布</h4>${pub}</div><div class="pane"><h4>最新候选</h4>${cand}</div></div>
+    <div class="compare"><div class="pane"><h4><span>当前已发布</span>${pubBtn}</h4>${pub}</div><div class="pane"><h4><span>最新候选</span>${candBtn}</h4>${cand}</div></div>
     <div class="cap"><b>${esc(f.name)}</b> <span class="pill ${status}">${label}</span>${f.custom?' <span style="color:var(--warn)">自定义提示词</span>':''}<div>${esc(f.why||'')}</div><span class="gen">${esc(f.gen||'')} · source ${esc((f.source_hash||'').slice(0,8))}</span></div>
     ${auditHTML(f)}
     <textarea class="review-note" data-review-note="${s.id}-${f.no}" placeholder="批准/退回/豁免备注（豁免必须填写）"></textarea>
@@ -344,6 +359,9 @@ function bind() {
   document.querySelectorAll('.fig .shot img').forEach(im => {
     im.onclick = () => { $('#zoomimg').src = im.src; $('#zoom').style.display = 'flex'; };
   });
+  document.querySelectorAll('.pane img').forEach(im => {
+    im.onclick = () => { $('#zoomimg').src = im.src; $('#zoom').style.display = 'flex'; };
+  });
   document.querySelectorAll('button[data-act]').forEach(b => {
     b.onclick = () => {
       const sid = b.dataset.s, act = b.dataset.act, no = b.dataset.no || 1;
@@ -353,6 +371,7 @@ function bind() {
       if (act === 'replan') replan(sid);
       if (act === 'reset')  resetSec(sid);
       if (act === 'prompt-reset') promptReset(sid, no);
+      if (act === 'local-edit') startLocalEdit(sid, +no, b.dataset.base, +b.dataset.v);
       if (['approve','reject','waive'].includes(act)) decide(sid, no, b.dataset.v, act);
       if (act === 'rollback') rollback(sid, no);
     };
@@ -368,6 +387,141 @@ function findFig(sid, no) {
   const s = findSec(sid);
   return ((s && s.figures) || []).find(f => f.no === +no) || null;
 }
+
+/* ---------------- 局部改字 ---------------- */
+let EDIT = null;
+
+function _clearLocalEdit() {
+  if (!EDIT) return;
+  EDIT.layer?.remove();
+  EDIT.boxEl?.remove();
+  EDIT.panel?.remove();
+  EDIT = null;
+}
+
+async function startLocalEdit(sid, no, base, version) {
+  _clearLocalEdit();
+  const fig = document.querySelector(`.fig[data-s="${sid}"][data-no="${no}"]`);
+  if (!fig) return;
+  const panes = fig.querySelectorAll('.pane');
+  const pane = panes[base === 'published' ? 0 : 1];
+  const wrap = pane && pane.querySelector('.imgwrap');
+  const img = wrap && wrap.querySelector('img');
+  if (!img) { toast('该窗格没有可编辑图片'); return; }
+  try { await img.decode(); } catch (e) { toast('图片尚未加载完成，请稍后再试'); return; }
+  if (!img.naturalWidth) { toast('图片尺寸不可用'); return; }
+
+  const layer = document.createElement('div');
+  layer.className = 'edit-layer';
+  const boxEl = document.createElement('div');
+  boxEl.className = 'edit-box';
+  wrap.appendChild(layer);
+  wrap.appendChild(boxEl);
+
+  const panel = document.createElement('div');
+  panel.className = 'edit-panel';
+  panel.innerHTML = `<canvas width="320" height="180"></canvas>
+    <div class="edit-fields">
+      <div class="edit-hint">基准：<b>${base === 'published' ? '已发布' : '最新候选'} ${vlabel(version)}</b> · 在图上拖框圈住要改的文字</div>
+      <input class="edit-text" maxlength="200" placeholder="替换文字（最多 200 字）">
+      <input class="edit-note" placeholder="备注（可选）">
+      <div class="row"><button class="btn pri" data-edit-submit>提交局部改字</button><button class="btn" data-edit-cancel>取消</button></div>
+      <div class="edit-hint">只改框内，框外像素不变；约 24–46 秒生成新候选，批准后才覆盖已发布。</div>
+    </div>`;
+  fig.querySelector('.cap').before(panel);
+
+  EDIT = {sid, no, base, version, img, layer, boxEl, panel,
+          canvas: panel.querySelector('canvas'), box: null, start: null};
+
+  const toNat = e => {
+    const r = img.getBoundingClientRect();
+    const x = Math.max(0, Math.min(img.naturalWidth, (e.clientX - r.left) / r.width * img.naturalWidth));
+    const y = Math.max(0, Math.min(img.naturalHeight, (e.clientY - r.top) / r.height * img.naturalHeight));
+    return {x, y};
+  };
+  const drawBox = () => {
+    if (!EDIT || !EDIT.box) return;
+    const r = img.getBoundingClientRect();
+    const sx = r.width / img.naturalWidth, sy = r.height / img.naturalHeight;
+    const b = EDIT.box;
+    boxEl.style.left = (Math.min(b.x0, b.x1) * sx) + 'px';
+    boxEl.style.top = (Math.min(b.y0, b.y1) * sy) + 'px';
+    boxEl.style.width = (Math.abs(b.x1 - b.x0) * sx) + 'px';
+    boxEl.style.height = (Math.abs(b.y1 - b.y0) * sy) + 'px';
+    boxEl.style.display = 'block';
+  };
+  layer.onpointerdown = e => {
+    e.preventDefault();
+    const p = toNat(e);
+    EDIT.start = p;
+    EDIT.box = {x0: p.x, y0: p.y, x1: p.x, y1: p.y};
+    layer.setPointerCapture(e.pointerId);
+    drawBox();
+  };
+  layer.onpointermove = e => {
+    if (!EDIT || !EDIT.start) return;
+    const p = toNat(e);
+    EDIT.box = {x0: Math.min(EDIT.start.x, p.x), y0: Math.min(EDIT.start.y, p.y),
+                x1: Math.max(EDIT.start.x, p.x), y1: Math.max(EDIT.start.y, p.y)};
+    drawBox();
+  };
+  layer.onpointerup = () => {
+    if (!EDIT || !EDIT.start) return;
+    EDIT.start = null;
+    const b = EDIT.box;
+    if (!b || b.x1 - b.x0 < 8 || b.y1 - b.y0 < 8) {
+      EDIT.box = null;
+      boxEl.style.display = 'none';
+      toast('框太小，请重新拖框');
+      return;
+    }
+    updateEditPreview();
+  };
+
+  panel.querySelector('[data-edit-cancel]').onclick = _clearLocalEdit;
+  panel.querySelector('[data-edit-submit]').onclick = submitLocalEdit;
+}
+
+function updateEditPreview() {
+  if (!EDIT) return;
+  const g = EDIT.canvas.getContext('2d');
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, EDIT.canvas.width, EDIT.canvas.height);
+  const b = EDIT.box;
+  if (!b) return;
+  const w = b.x1 - b.x0, h = b.y1 - b.y0;
+  if (w < 1 || h < 1) return;
+  const s = Math.min(EDIT.canvas.width / w, EDIT.canvas.height / h);
+  const dw = w * s, dh = h * s;
+  g.imageSmoothingEnabled = true;
+  g.drawImage(EDIT.img, b.x0, b.y0, w, h,
+              (EDIT.canvas.width - dw) / 2, (EDIT.canvas.height - dh) / 2, dw, dh);
+}
+
+async function submitLocalEdit() {
+  if (!EDIT) return;
+  const box = EDIT.box;
+  if (!box) { toast('请先在图上拖框'); return; }
+  const text = (EDIT.panel.querySelector('.edit-text').value || '').trim();
+  if (!text) { toast('请输入替换文字'); EDIT.panel.querySelector('.edit-text').focus(); return; }
+  const f = findFig(EDIT.sid, EDIT.no);
+  if (!f) { toast('找不到页面数据'); return; }
+  const note = (EDIT.panel.querySelector('.edit-note').value || '').trim();
+  const payload = {base_version: EDIT.version,
+                   box: [Math.round(box.x0), Math.round(box.y0), Math.round(box.x1), Math.round(box.y1)],
+                   text, expected_source_hash: f.source_hash, note};
+  const sid = EDIT.sid, no = EDIT.no;
+  try {
+    toast('已提交局部改字，正在生成…');
+    const r = await api(`/api/section/${sid}/pages/${no}/local-edit`, payload);
+    _clearLocalEdit();
+    if (r.job_id) startJobPoll(r.job_id); else load();
+  } catch (e) {
+    toast('提交失败：' + String(e.message || e).slice(0, 160));
+  }
+}
+
+window.addEventListener('resize', () => { if (EDIT) _clearLocalEdit(); });
 
 function basePrompt(sid, no) { const f = findFig(sid, no); return f ? f.prompt : ''; }
 

@@ -203,6 +203,25 @@ def register_candidate(root: str | Path, metadata: dict[str, Any]) -> dict[str, 
     return rec
 
 
+def import_published(root: str | Path, sid: str, page: int, source_image: str | Path,
+                     metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    """把一张既有全图导入为 vNNNN 候选并立即发布（回填历史交付用）。"""
+    root = Path(root)
+    source = Path(source_image)
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    version = next_candidate_version(root, sid, page)
+    destination = candidate_path(root, sid, page, version)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    record = register_candidate(root, {
+        "sid": sid, "page": page, "version": version, "status": "review",
+        **(metadata or {}),
+    })
+    publish_candidate(root, sid, page, version)
+    return get_candidate(root, sid, page, version) or record
+
+
 def get_candidate(root: str | Path, sid: str, page: int,
                   version: int) -> dict[str, Any] | None:
     rec = load_pages_doc(root)["pages"].get(_key(sid, page), {})
@@ -212,6 +231,10 @@ def get_candidate(root: str | Path, sid: str, page: int,
 def list_candidates(root: str | Path, sid: str, page: int) -> list[dict[str, Any]]:
     rec = load_pages_doc(root)["pages"].get(_key(sid, page), {})
     return sorted(rec.get("candidates", []), key=lambda c: int(c["version"]))
+
+
+def get_page(root: str | Path, sid: str, page: int) -> dict[str, Any]:
+    return load_pages_doc(root)["pages"].get(_key(sid, page), {})
 
 
 def record_decision(root: str | Path, sid: str, page: int, version: int,

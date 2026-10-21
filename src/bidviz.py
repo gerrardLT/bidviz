@@ -16,6 +16,7 @@ import sys
 import textwrap
 import ipaddress
 import urllib.error
+import uuid
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
@@ -429,15 +430,25 @@ class ImageAPI:
         if not self.base_url or not self.api_key:
             raise BidVizError("缺少生图凭据：请设置 BIDVIZ_BASE_URL / BIDVIZ_API_KEY")
 
-    @property
-    def endpoint(self) -> str:
-        """按根地址推导生图端点：已是端点则直接用；已带版本段则追加；裸域名补 /v1。"""
+    def _endpoint_for(self, kind: str) -> str:
+        """按根地址推导 /images/<kind> 端点；已是端点则直接用，已带版本段则追加。"""
         base = self.base_url.rstrip("/")
-        if base.endswith("/images/generations"):
+        suffix = f"/images/{kind}"
+        if base.endswith(suffix):
             return base
         if re.search(r"/(v\d+[a-z]*|api|api/v\d+)$", base):
-            return base + "/images/generations"
-        return base + "/v1/images/generations"
+            return base + suffix
+        return base + "/v1" + suffix
+
+    @property
+    def endpoint(self) -> str:
+        """生图端点。"""
+        return self._endpoint_for("generations")
+
+    @property
+    def edits_endpoint(self) -> str:
+        """局部改字（mask edits）端点。"""
+        return self._endpoint_for("edits")
 
     def models(self) -> list[str]:
         base = self.base_url[:-len("/images/generations")] if self.base_url.endswith("/images/generations") else self.base_url
@@ -450,9 +461,67 @@ class ImageAPI:
         return [item.get("id", "") for item in payload.get("data", []) if isinstance(item, dict) and item.get("id")]
 
     @staticmethod
-    def _data_uri(path: Path) -> str:
-        mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(path.suffix.lower(), "image/png")
-        return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+    def _mime(path: Path) -> str:
+        return {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(path.suffix.lower(), "image/png")
+
+    @classmethod
+    def _data_uri(cls, path: Path) -> str:
+        return f"data:{cls._mime(path)};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+
+    @staticmethod
+    def _multipart(fields: dict[str, str], files: dict[str, Path]) -> tuple[bytes, str]:
+        boundary = "----bidviz" + uuid.uuid4().hex
+        chunks: list[bytes] = []
+        for name, value in fields.items():
+            chunks.append(
+                f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n'
+                f"{value}\r\n".encode("utf-8"))
+        for name, path in files.items():
+            path = Path(path)
+            chunks.append(
+                f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; '
+                f'filename="{path.name}"\r\nContent-Type: {ImageAPI._mime(path)}\r\n\r\n'.encode("utf-8"))
+            chunks.append(path.read_bytes())
+            chunks.append(b"\r\n")
+        chunks.append(f"--{boundary}--\r\n".encode("ascii"))
+        return b"".join(chunks), f"multipart/form-data; boundary={boundary}"
+
+    @staticmethod
+    def _request_json(req: urllib.request.Request, timeout: float, label: str) -> dict[str, Any]:
+        try:
+            with _safe_open(req, timeout) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as exc:
+            raw = exc.read().decode("utf-8", "replace")
+            try:
+                parsed = json.loads(raw)
+                error = parsed.get("error", parsed)
+                message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
+            except Exception:
+                message = raw
+            raise BidVizError(f"{label} HTTP {exc.code}: {message[:500]}") from None
+
+    @staticmethod
+    def _write_response(data: dict[str, Any], output: Path, recorder: dict[str, Any] | None) -> Path:
+        items = data.get("data") or data.get("images") or []
+        if not items:
+            raise BidVizError("接口未返回图片")
+        item = items[0]
+        if item.get("b64_json"):
+            content = base64.b64decode(item["b64_json"])
+        elif item.get("url"):
+            # 响应体回传的 URL 属外部输入：必须走同一出口校验（scheme + IP 边界）
+            dl = urllib.request.Request(item["url"], headers={"User-Agent": "bidviz/0.1"})
+            with _safe_open(dl, 120) as resp:
+                content = resp.read()
+        else:
+            raise BidVizError("响应没有 b64_json 或 url")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+        if recorder is not None:
+            recorder.update({"output": str(output), "output_sha256": hashlib.sha256(content).hexdigest(),
+                             "generated_at": utc_now()})
+        return output
 
     def generate(self, prompt: str, output: Path, references: list[Path] | None = None,
                  recorder: dict[str, Any] | None = None, size: str | None = None) -> Path:
@@ -471,36 +540,31 @@ class ImageAPI:
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             method="POST",
         )
-        try:
-            with _safe_open(req, 240) as resp:
-                data = json.load(resp)
-        except urllib.error.HTTPError as exc:
-            raw = exc.read().decode("utf-8", "replace")
-            try:
-                parsed = json.loads(raw)
-                error = parsed.get("error", parsed)
-                message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
-            except Exception:
-                message = raw
-            raise BidVizError(f"生图 API HTTP {exc.code}: {message[:500]}") from None
-        items = data.get("data") or data.get("images") or []
-        if not items:
-            raise BidVizError("生图 API 未返回图片")
-        item = items[0]
-        if item.get("b64_json"):
-            content = base64.b64decode(item["b64_json"])
-        elif item.get("url"):
-            # 响应体回传的 URL 属外部输入：必须走同一出口校验（scheme + IP 边界）
-            dl = urllib.request.Request(item["url"], headers={"User-Agent": "bidviz/0.1"})
-            with _safe_open(dl, 120) as resp:
-                content = resp.read()
-        else:
-            raise BidVizError("响应没有 b64_json 或 url")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(content)
+        data = self._request_json(req, 240, "生图 API")
+        return self._write_response(data, output, recorder)
+
+    def edit(self, prompt: str, image: Path, mask: Path, output: Path,
+             size: str | None = None, recorder: dict[str, Any] | None = None) -> Path:
+        """局部改字：multipart 提交原图与遮罩，返回整张画布（调用方只应取遮罩区域）。"""
+        image, mask = Path(image), Path(mask)
+        fields = {"model": self.model, "prompt": prompt, "n": "1", "response_format": "b64_json"}
+        if size:
+            fields["size"] = size
+        body, content_type = self._multipart(fields, {"image": image, "mask": mask})
         if recorder is not None:
-            recorder.update({"output": str(output), "output_sha256": hashlib.sha256(content).hexdigest(), "generated_at": utc_now()})
-        return output
+            recorder.clear()
+            recorder.update({"endpoint": self.edits_endpoint, "model": self.model, "kind": "edit",
+                             "image_sha256": hashlib.sha256(image.read_bytes()).hexdigest(),
+                             "mask_sha256": hashlib.sha256(mask.read_bytes()).hexdigest(),
+                             "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()})
+        req = urllib.request.Request(
+            self.edits_endpoint,
+            data=body,
+            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": content_type},
+            method="POST",
+        )
+        data = self._request_json(req, 300, "局部改字 API")
+        return self._write_response(data, output, recorder)
 
 
 def font_path(bold: bool = False) -> str:

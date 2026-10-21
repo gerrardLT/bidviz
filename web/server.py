@@ -38,6 +38,7 @@ import build_e1 as be  # noqa: E402
 import generate_chapter as gc  # noqa: E402
 import bidviz_fullimage as fullimage  # noqa: E402
 import bidviz_fullimage_audit as fullaudit  # noqa: E402
+import bidviz_local_edit as localedit  # noqa: E402
 try:
     import bidviz_fullimage_store as fullstore  # noqa: E402
 except ImportError:  # 模块由 W0 阶段提供；缺失时 fullimage API 返回明确错误
@@ -96,25 +97,13 @@ def _fullimage_page_context(sid: str, page_no: int, secs: dict | None = None) ->
     sec = secs.get(sid)
     if sec is None:
         raise KeyError(f"节不存在：{sid}")
-    blocks = [(getattr(b, "kind", "body"), (getattr(b, "text", "") or "").strip())
-              for b in sec.blocks if (getattr(b, "text", "") or "").strip() and
-              (getattr(b, "text", "") or "").strip() != sec.title]
-    pages = fullimage.split_pages(blocks)
-    if page_no < 1 or page_no > len(pages):
-        raise IndexError(f"{sid} 无第 {page_no} 页（共 {len(pages)} 页）")
-    built = fullimage.build_fullpage_prompt(ROOT, sid, page_no, len(pages), pages[page_no - 1])
-    source_text = "\n".join(x[1] for x in pages[page_no - 1])
-    source_hash = store.sha256_text(sec.title + "\n" + source_text)
-    template_hash = store.sha256_text(fullimage.PROMPT_TEMPLATE.read_text(encoding="utf-8"))
-    ov = store.get_prompt_override(ROOT, sid, page_no, built["prompt"], source_hash)
+    ctx = localedit.page_context(ROOT, sid, page_no, sec.title)
+    ov = store.get_prompt_override(ROOT, sid, page_no, ctx["auto_prompt"], ctx["source_hash"])
     chapter = (sec.chapter or "").split(" / ")[0]
-    return {"sid": sid, "page": page_no, "total_pages": len(pages), "section": sec,
-            "chapter": chapter,
-            "page_blocks": pages[page_no - 1], "built": built,
-            "auto_prompt": built["prompt"], "resolved_prompt": ov["resolved_prompt"],
-            "custom": ov["custom"], "stale": ov["stale"], "source_hash": source_hash,
-            "template_hash": template_hash, "prompt_hash": store.sha256_text(ov["resolved_prompt"]),
-            "source_text": source_text}
+    return {**ctx, "section": sec, "chapter": chapter,
+            "resolved_prompt": ov["resolved_prompt"], "custom": ov["custom"],
+            "stale": ov["stale"],
+            "prompt_hash": store.sha256_text(ov["resolved_prompt"])}
 
 
 # ---------------------------------------------------------------- 数据
@@ -378,6 +367,107 @@ def do_fullimage_generate(job_id: str, sid: str, page_no: int,
             _state.update(running=False, msg=msg)
 
 
+def _local_edit_base(sid: str, page_no: int, base_version: int | None):
+    """返回 (基准图路径, 基准元数据, 基准类型)。"""
+    store = _require_store()
+    if base_version:
+        meta = store.get_candidate(ROOT, sid, page_no, int(base_version))
+        if meta is None:
+            raise KeyError(f"候选不存在：{sid} p{page_no} v{int(base_version):04d}")
+        path = ROOT / meta["path"]
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        return path, meta, "candidate"
+    rec = store.get_page(ROOT, sid, page_no)
+    current = (rec.get("published") or {}).get("current")
+    if current:
+        path = ROOT / current["candidate_path"]
+        if path.is_file():
+            return path, current, "published"
+    candidates = store.list_candidates(ROOT, sid, page_no)
+    if candidates:
+        return ROOT / candidates[-1]["path"], candidates[-1], "candidate"
+    legacy = ROOT / "work" / "fullimage" / f"{sid}_p{page_no}.png"
+    if legacy.is_file():
+        return legacy, None, "legacy"
+    raise FileNotFoundError(f"{sid} 第{page_no}页没有可编辑的基准图")
+
+
+def do_fullimage_local_edit(job_id: str, sid: str, page_no: int,
+                            expected_source_hash: str, base_version: int | None,
+                            box: list[float], text: str, note: str = "") -> None:
+    store = _require_store()
+    msg = ""
+    try:
+        _chapters, secs = _fullimage_sections()
+        ctx = _fullimage_page_context(sid, page_no, secs)
+        if ctx["source_hash"] != expected_source_hash:
+            raise RuntimeError("原文已变化，请刷新页面后重新提交")
+        source, base_meta, base_kind = _local_edit_base(sid, page_no, base_version)
+        version = store.next_candidate_version(ROOT, sid, page_no)
+        candidate = store.candidate_path(ROOT, sid, page_no, version)
+        store.update_job(ROOT, job_id, status="generating", version=version,
+                         msg=f"局部改字 {sid} 第{page_no}页 v{version:04d} …")
+        with _lock:
+            _state.update(running=True, section=sid, fig=page_no,
+                          msg=f"局部改字：{sid} 第{page_no}页 v{version:04d} …")
+
+        edit = localedit.apply_local_edit(source, box, text, candidate, note=note)
+        from PIL import Image
+        with Image.open(source) as src, Image.open(candidate) as out:
+            checks = localedit.manual_checks(src, out, tuple(edit["box"]))
+        status = "blocked" if checks["status"] == "block" else "review"
+        reference_count = int(base_meta.get("reference_count", 0)) if base_meta else \
+            (0 if ctx.get("cover") else 1)
+        metadata = {
+            "sid": sid, "page": page_no, "version": version, "status": status,
+            "kind": "local-edit", "base_version": int(base_version) if base_version else None,
+            "base_kind": base_kind,
+            "source_hash": ctx["source_hash"], "template_hash": ctx["template_hash"],
+            "prompt_hash": store.sha256_text(edit["prompt"]), "prompt": edit["prompt"],
+            "provider": edit.get("provider"), "model": edit.get("model"),
+            "requested_size": edit.get("requested_size"), "actual_size": edit.get("actual_size"),
+            "reference_count": reference_count,
+            "sec": edit.get("sec"), "kb": round(candidate.stat().st_size / 1024),
+            "checks": checks,
+            "edit": {"box": edit.get("box"), "user_box": edit.get("user_box"),
+                     "crop": edit.get("crop"), "text": edit.get("text"), "note": note,
+                     "raw_size": edit.get("raw_size"), "image_sha256": edit.get("image_sha256"),
+                     "mask_sha256": edit.get("mask_sha256"),
+                     "output_sha256": edit.get("output_sha256")},
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_ts": time.time(), "decision": None,
+        }
+        try:
+            store.register_candidate(ROOT, metadata)
+        except ValueError:
+            # 并发下版本被占用：换下一个版本，保留已生成图片
+            new_version = store.next_candidate_version(ROOT, sid, page_no)
+            new_path = store.candidate_path(ROOT, sid, page_no, new_version)
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(candidate, new_path)
+            try:
+                candidate.unlink()
+            except OSError:
+                pass
+            version, candidate = new_version, new_path
+            metadata["version"] = version
+            metadata["kb"] = round(candidate.stat().st_size / 1024)
+            store.register_candidate(ROOT, metadata)
+        store.update_job(ROOT, job_id, status=status, version=version,
+                         msg=f"局部改字候选 v{version:04d} 已生成，待人工复核",
+                         result=metadata)
+        msg = f"{sid} 第{page_no}页局部改字完成（v{version:04d}，{checks['status']}）"
+    except (Exception, SystemExit) as exc:
+        traceback.print_exc()
+        store.update_job(ROOT, job_id, status="failed", error=str(exc)[:300],
+                         msg=f"局部改字失败：{str(exc)[:150]}")
+        msg = f"{sid} 第{page_no}页局部改字失败: {str(exc)[:120]}"
+    finally:
+        with _lock:
+            _state.update(running=False, msg=msg)
+
+
 def do_replan(section: str | None, force: bool) -> None:
     only = [x.strip() for x in (section or "").split(",") if x.strip()] or None
     with _lock:
@@ -541,7 +631,7 @@ class Handler(SimpleHTTPRequestHandler):
                                  daemon=True).start()
                 return self._json({"ok": True})
 
-            m = re.fullmatch(r"/api/section/(S\d+)/pages/(\d+)/(generate|prompt-reset|approve|reject|waive|rollback)", p)
+            m = re.fullmatch(r"/api/section/(S\d+)/pages/(\d+)/(generate|prompt-reset|approve|reject|waive|rollback|local-edit)", p)
             if m and fullimage_mode():
                 sid, page_no, action = m.group(1), int(m.group(2)), m.group(3)
                 body = self._body()
@@ -555,6 +645,34 @@ class Handler(SimpleHTTPRequestHandler):
                     job = store.create_job(ROOT, sid=sid, page=page_no)
                     threading.Thread(target=do_fullimage_generate,
                                      args=(job["job_id"], sid, page_no, expected, prompt),
+                                     daemon=True).start()
+                    return self._json({"ok": True, "job_id": job["job_id"]})
+                if action == "local-edit":
+                    ctx = _fullimage_page_context(sid, page_no)
+                    expected = str(body.get("expected_source_hash") or "")
+                    if expected != ctx["source_hash"]:
+                        return self._json({"error": "原文已变化，请刷新后重试"}, 409)
+                    text = str(body.get("text") or "").strip()
+                    if not text:
+                        return self._json({"error": "缺少替换文字"}, 400)
+                    if len(text) > localedit.MAX_TEXT:
+                        return self._json({"error": f"替换文字最多 {localedit.MAX_TEXT} 字"}, 400)
+                    box = body.get("box")
+                    if not isinstance(box, list) or len(box) != 4:
+                        return self._json({"error": "框必须是 [x0,y0,x1,y1]"}, 400)
+                    try:
+                        base_version = int(body["base_version"]) if body.get("base_version") else None
+                    except (TypeError, ValueError):
+                        return self._json({"error": "基准版本无效"}, 400)
+                    try:
+                        _local_edit_base(sid, page_no, base_version)
+                    except (KeyError, FileNotFoundError) as exc:
+                        return self._json({"error": str(exc)}, 404)
+                    job = store.create_job(ROOT, sid=sid, page=page_no, kind="local-edit",
+                                           base_version=base_version, text=text)
+                    threading.Thread(target=do_fullimage_local_edit,
+                                     args=(job["job_id"], sid, page_no, expected,
+                                           base_version, box, text, str(body.get("note") or "")),
                                      daemon=True).start()
                     return self._json({"ok": True, "job_id": job["job_id"]})
                 if action == "prompt-reset":

@@ -105,6 +105,39 @@ class BidVizTests(unittest.TestCase):
             self.assertEqual(record["reference_count"], 2)
             self.assertNotIn("secret", json.dumps(record))
 
+    def test_api_edit_posts_multipart_with_mask(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            image = root / "crop.png"
+            mask = root / "mask.png"
+            output = root / "out.png"
+            Image.new("RGB", (32, 16), "white").save(image)
+            Image.new("L", (32, 16), 0).save(mask)
+            image_bytes = b"edited-image"
+            response = unittest.mock.MagicMock()
+            response.__enter__.return_value = response
+            response.__exit__.return_value = False
+            response.read.return_value = json.dumps(
+                {"data": [{"b64_json": base64.b64encode(image_bytes).decode()}]}).encode()
+            record = {}
+            with patch.dict("os.environ", {"CUSTOM_IMAGE_API_BASE": "https://example.test/v1",
+                                           "CUSTOM_IMAGE_API_KEY": "secret"}, clear=False), \
+                 patch.object(bidviz, "_safe_open", return_value=response) as safe_open:
+                bidviz.ImageAPI().edit("把文字改成挖", image, mask, output,
+                                       size="32x16", recorder=record)
+            request = safe_open.call_args.args[0]
+            self.assertTrue(request.full_url.endswith("/v1/images/edits"))
+            self.assertIn("multipart/form-data", request.get_header("Content-type"))
+            self.assertIn(b'name="model"', request.data)
+            self.assertIn(b'name="prompt"', request.data)
+            self.assertIn(b'name="image"', request.data)
+            self.assertIn(b'name="mask"', request.data)
+            self.assertIn(image.read_bytes(), request.data)
+            self.assertIn(mask.read_bytes(), request.data)
+            self.assertEqual(output.read_bytes(), image_bytes)
+            self.assertEqual(record["kind"], "edit")
+            self.assertNotIn("secret", json.dumps(record))
+
     def test_online_visuals_require_ocr_or_human_review(self):
         project = bidviz.Project("x")
         project._visual_paths = [Path("generated.png")]

@@ -72,6 +72,8 @@ bidviz serve demo-35kv --port 8770
 
 当前 `anke-35kv` 的 `[layout].engine = "fullimage"`，Web 已升级为全图质量工作台：编辑完整页提示词 → 生成候选 2K → 自动门禁 → 人工批准发布 → 全部页面通过后正式汇编。候选不会直接覆盖已发布图；存在待审、过期、缺失或阻断页面时，正式 PDF 会被阻断，可另生成带水印 DRAFT。
 
+全图页支持**人工框选局部改字**：在已发布/候选图上拖框 → 输入替换文字 → 只重绘框内 → 生成新候选 → 人工放大复核后批准发布；框外像素保持不变。历史 103 页需先执行一次回填（`python -m src.bidviz_local_edit import --root projects/anke-35kv`），操作见 `docs/局部改字操作手册.md`。OCR 乱码自动检测（RapidOCR + 原文比对）列为待办，当前为纯人工审核。
+
 ## 常用命令
 
 ```powershell
