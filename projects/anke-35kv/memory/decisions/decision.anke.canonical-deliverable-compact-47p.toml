@@ -1,0 +1,47 @@
+schema = "bidviz.memory/v1"
+id = "decision.anke.canonical-deliverable-compact-47p"
+revision = 2
+kind = "decision"
+status = "human_signed"
+title = "安科正式交付物为 47 页压缩版，103 页全图册为初版"
+claim = "安科项目正式交付物是 47 页 AI 压缩版（施工组织设计-图册-A3-fullimage-50p.pdf）。103 页全图版为初版对照，不再维护：其 102 页提示词基线 stale 判定保留原状，不重生成、不重签基线；fullimage 正式汇编门禁维持阻断即视为正确行为。S058:p1 v0002 待审候选随初版一并视为无需处理。"
+tags = ["anke-35kv", "compact-47p", "deliverable", "fullimage-superseded"]
+created_at = "2026-10-23T01:25:09Z"
+updated_at = "2026-10-23T01:25:09Z"
+last_verified_at = "2026-10-23T01:25:09Z"
+valid_until = ""
+supersedes = ["candidate.anke.fullimage-quoted-prompt-rebaseline"]
+conflict_key = "anke.canonical-deliverable"
+depends_on = []
+
+[scope]
+project = "anke-35kv"
+engine = "fullimage"
+operation = "build"
+section = ""
+page = ""
+provider = ""
+model = ""
+
+[authority]
+signed_by = "user"
+signed_at = "2026-10-23T01:25:09Z"
+content_sha256 = "6577a97f8b90000361e53dbc477ecb7db5bccd747e8abd1ac139f4d34c3b2d6b"
+
+[[evidence]]
+kind = "artifact"
+ref = "projects/anke-35kv/output/施工组织设计-图册-A3-fullimage-50p.pdf"
+hash = "89e0343bd89aab6bbba54a91421bec1ee41accc304e588edaf4739fae32a667f"
+outcome = "canonical"
+
+[[evidence]]
+kind = "human"
+ref = "user:2026-10-23:canonical-deliverable-statement"
+hash = "0cd7c21cd87f154298139ee8285bf1e9ce00755ba815ca93bf0f9f17c5d50c34"
+outcome = "approved"
+
+[[promotions]]
+from = "candidate"
+to = "human_signed"
+at = "2026-10-23T01:25:09Z"
+by = "user"

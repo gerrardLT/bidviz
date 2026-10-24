@@ -1,0 +1,48 @@
+schema = "bidviz.memory/v1"
+id = "candidate.anke.fullimage-quoted-prompt-rebaseline"
+revision = 8
+kind = "decision"
+status = "superseded"
+title = "102 个 fullimage 发布页需决定重生成或重签基线"
+claim = "当前 fullimage 自动提示词新增「」正文边界及“边界不绘制”指令；原文/模板哈希不变，但 102 个非封面发布页的 prompt_hash 与当前代码不一致，正式 build 应保持阻断，直到重生成或人工明确重签基线。"
+tags = ["anke-35kv", "decision-required", "fullimage", "prompt", "stale"]
+created_at = "2026-10-22T14:13:41Z"
+updated_at = "2026-10-23T01:25:09Z"
+last_verified_at = "2026-10-23T01:09:50Z"
+valid_until = ""
+supersedes = []
+superseded_by = "decision.anke.canonical-deliverable-compact-47p"
+conflict_key = "anke.fullimage.prompt-baseline"
+depends_on = []
+
+[scope]
+project = "anke-35kv"
+engine = "fullimage"
+operation = ["generate", "build"]
+section = ""
+page = ""
+provider = ""
+model = ""
+
+[authority]
+signed_by = ""
+signed_at = ""
+content_sha256 = ""
+
+[invalidation]
+reason = "初版全图册不再维护，提示词基线问题随之关闭"
+by = "user"
+at = "2026-10-23T01:25:09Z"
+previous_status = "candidate"
+
+[[evidence]]
+kind = "state"
+ref = "projects/anke-35kv/work/fullimage-pages.json"
+hash = "e5af83e522d273ae8872e8dcf605b7b17093b816818b9deaf5cbd67130164272"
+outcome = "102-stale"
+
+[[evidence]]
+kind = "source"
+ref = "src/bidviz_fullimage.py"
+hash = "e26fc230e7a3b4ef6a12e9e464920e66e7c959d947be1db69cbf4db08feb1b54"
+outcome = "quoted-boundary-active"

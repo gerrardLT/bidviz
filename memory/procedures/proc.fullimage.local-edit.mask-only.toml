@@ -1,0 +1,43 @@
+schema = "bidviz.memory/v1"
+id = "proc.fullimage.local-edit.mask-only"
+revision = 8
+kind = "procedure"
+status = "machine_verified"
+title = "局部改字只合成遮罩区域"
+claim = "images/edits 可能返回整张重绘画布；只能把遮罩内补丁合成回原图，框外像素必须保持不变。"
+tags = ["fullimage", "local-edit", "mask", "pixel-integrity"]
+created_at = "2026-10-22T13:34:38Z"
+updated_at = "2026-10-23T01:09:50Z"
+last_verified_at = "2026-10-23T01:09:50Z"
+valid_until = ""
+supersedes = []
+conflict_key = "fullimage.local-edit.composite"
+
+[scope]
+project = "*"
+engine = "fullimage"
+operation = "local-edit"
+section = ""
+page = ""
+provider = ""
+model = ""
+
+[[evidence]]
+kind = "test"
+ref = "tests/test_fullimage_local_edit.py"
+hash = "99ecd2c656c558904943350746236a9d72e783f5adfc3e6adfe6be9da4ea7568"
+outcome = "pass"
+
+[[evidence]]
+kind = "source"
+ref = "src/bidviz_local_edit.py"
+hash = "649113cb15a626a8574a8e0ec2328a65a5f558374f21935ac03e2554c2739d96"
+outcome = "pass"
+
+[[depends_on]]
+path = "src/bidviz_local_edit.py"
+expected_hash = "649113cb15a626a8574a8e0ec2328a65a5f558374f21935ac03e2554c2739d96"
+
+[[depends_on]]
+path = "tests/test_fullimage_local_edit.py"
+expected_hash = "99ecd2c656c558904943350746236a9d72e783f5adfc3e6adfe6be9da4ea7568"

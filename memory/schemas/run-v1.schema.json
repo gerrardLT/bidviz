@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bidviz.local/schemas/run-v1.schema.json",
+  "title": "BidViz run manifest/outcome v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema", "run_id", "status"],
+  "properties": {
+    "schema": { "const": "bidviz.run/v1" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "last_seq": { "type": "integer", "minimum": 0 },
+    "project": { "type": "string" },
+    "command": { "type": "string" },
+    "exit_code": { "type": "integer" },
+    "error_type": { "type": "string" },
+    "error": { "type": "string" }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "bidviz-cleanup-result/1",
+  "applied_at": "2026-10-22",
+  "manifest": "projects/anke-35kv/memory/manifests/cleanup-2026-10-22.json",
+  "verified_files": 3767,
+  "deleted_files": 3767,
+  "missing_before_delete": 108,
+  "bytes_deleted": 4673101278,
+  "errors": [],
+  "canonical_compact": {
+    "path": "projects/anke-35kv/output/施工组织设计-图册-A3-fullimage-50p.pdf",
+    "sha256": "89e0343bd89aab6bbba54a91421bec1ee41accc304e588edaf4739fae32a667f",
+    "source_removed": true
+  },
+  "publication_migration": {
+    "pages": 103,
+    "current": 0,
+    "previous": 1
+  },
+  "candidate_compaction": {
+    "pruned": 107,
+    "retained": 1,
+    "already_missing": 0
+  },
+  "publication_history_compaction": {
+    "removed": 1,
+    "cleared": 1
+  }
+}

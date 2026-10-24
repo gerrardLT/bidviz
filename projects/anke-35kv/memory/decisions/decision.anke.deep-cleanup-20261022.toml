@@ -1,0 +1,41 @@
+schema = "bidviz.memory/v1"
+id = "decision.anke.deep-cleanup-20261022"
+revision = 4
+kind = "decision"
+status = "human_signed"
+title = "执行深度清理"
+claim = "迁移证据和发布状态后，删除可再生缓存、历史候选、旧回滚二进制、过时试验及重复输出；保留 current published、未决候选、签认件和必要源数据。"
+tags = ["anke-35kv", "cleanup", "retention"]
+created_at = "2026-10-22T13:34:38Z"
+updated_at = "2026-10-22T23:48:13Z"
+last_verified_at = "2026-10-22T23:48:13Z"
+valid_until = ""
+supersedes = []
+conflict_key = "anke.cleanup-retention"
+depends_on = []
+
+[scope]
+project = "anke-35kv"
+engine = ""
+operation = "cleanup"
+section = ""
+page = ""
+provider = ""
+model = ""
+
+[authority]
+signed_by = "user"
+signed_at = "2026-10-22T13:34:38Z"
+content_sha256 = "c5234bd295ff40f5ee0e1fdd176b6ffc1478b6f5979659171f27fec1cc611c56"
+
+[[evidence]]
+kind = "human"
+ref = "user:current-session:deep-cleanup"
+hash = "2ef0e837787a15d67e6ff095b9d7c3e5b917cdd34fb8d25c39a92e6ab3a2cbfc"
+outcome = "approved"
+
+[[promotions]]
+from = "candidate"
+to = "human_signed"
+at = "2026-10-22T13:34:38Z"
+by = "user"

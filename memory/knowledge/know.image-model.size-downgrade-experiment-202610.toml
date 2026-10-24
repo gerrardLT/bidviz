@@ -1,0 +1,30 @@
+schema = "bidviz.memory/v1"
+id = "know.image-model.size-downgrade-experiment-202610"
+revision = 9
+kind = "knowledge"
+status = "corroborated"
+title = "图像模型尺寸响应实测（2026-10）"
+claim = "2026-10 实测中，gpt-image-2 请求 4096×2896 时返回 1536×1086；其他若干 2.5 变体返回请求尺寸。该结论有时效性，调用方仍必须校验实际像素，不能信任请求档位。"
+tags = ["dimensions", "image-model", "provider-experiment"]
+created_at = "2026-10-22T13:49:23Z"
+updated_at = "2026-10-23T01:09:50Z"
+last_verified_at = "2026-10-23T01:09:50Z"
+valid_until = "2026-12-31T23:59:59Z"
+supersedes = []
+conflict_key = ""
+depends_on = []
+
+[scope]
+project = "*"
+engine = ""
+operation = "generate"
+section = ""
+page = ""
+provider = ""
+model = ["gpt-image-2", "gpt-image-2.5"]
+
+[[evidence]]
+kind = "experiment"
+ref = "memory/evidence/model-size-experiment-202610.json"
+hash = "af33f9081635e9fd66a82490bf90afa699bd8aff4deaeda1a377fbb3975522cb"
+outcome = "corroborated"

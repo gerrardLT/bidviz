@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bidviz.local/schemas/memory-record-v1.schema.json",
+  "title": "BidViz durable memory record v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "id",
+    "revision",
+    "kind",
+    "status",
+    "title",
+    "claim",
+    "tags",
+    "scope",
+    "created_at",
+    "updated_at",
+    "last_verified_at",
+    "valid_until",
+    "supersedes",
+    "conflict_key",
+    "evidence",
+    "depends_on"
+  ],
+  "properties": {
+    "schema": { "const": "bidviz.memory/v1" },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "revision": { "type": "integer", "minimum": 1 },
+    "kind": { "type": "string", "minLength": 1 },
+    "status": {
+      "enum": [
+        "candidate",
+        "corroborated",
+        "machine_verified",
+        "human_signed",
+        "rejected",
+        "stale",
+        "superseded",
+        "expired"
+      ]
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "claim": { "type": "string", "minLength": 1 },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "engine", "operation", "section", "page", "provider", "model"],
+      "properties": {
+        "project": { "$ref": "#/$defs/scopeValue" },
+        "engine": { "$ref": "#/$defs/scopeValue" },
+        "operation": { "$ref": "#/$defs/scopeValue" },
+        "section": { "$ref": "#/$defs/scopeValue" },
+        "page": { "$ref": "#/$defs/scopeValue" },
+        "provider": { "$ref": "#/$defs/scopeValue" },
+        "model": { "$ref": "#/$defs/scopeValue" }
+      }
+    },
+    "created_at": { "$ref": "#/$defs/dateOrEmpty" },
+    "updated_at": { "$ref": "#/$defs/dateOrEmpty" },
+    "last_verified_at": { "$ref": "#/$defs/dateOrEmpty" },
+    "valid_until": { "$ref": "#/$defs/dateOrEmpty" },
+    "supersedes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "superseded_by": { "type": "string" },
+    "conflict_key": { "type": "string" },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dependency" }
+    },
+    "authority": { "$ref": "#/$defs/authority" },
+    "invalidation": {
+      "type": "object",
+      "required": ["reason", "by", "at", "previous_status"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 1 },
+        "by": { "type": "string" },
+        "at": { "type": "string", "format": "date-time" },
+        "previous_status": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "enum": ["policy", "decision"] } }, "required": ["kind"] },
+      "then": { "required": ["authority"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "human_signed" } }, "required": ["status"] },
+      "then": {
+        "required": ["authority"],
+        "properties": {
+          "authority": {
+            "properties": {
+              "signed_by": { "minLength": 1 },
+              "signed_at": { "minLength": 1 },
+              "content_sha256": { "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "dateOrEmpty": {
+      "type": "string",
+      "anyOf": [{ "const": "" }, { "format": "date-time" }]
+    },
+    "scopeValue": {
+      "oneOf": [
+        { "type": ["string", "number"] },
+        {
+          "type": "array",
+          "items": { "type": ["string", "number"] }
+        }
+      ]
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "ref", "hash", "outcome"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "ref": { "type": "string", "minLength": 1 },
+        "hash": { "$ref": "#/$defs/sha256" },
+        "outcome": { "type": "string", "minLength": 1 },
+        "episode_id": { "type": "string" },
+        "run_id": { "type": "string" },
+        "observed_at": { "type": "string" }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["expected_hash"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string", "minLength": 1 },
+        "expected_hash": { "$ref": "#/$defs/sha256" }
+      },
+      "oneOf": [
+        { "required": ["path"], "not": { "required": ["subject"] } },
+        { "required": ["subject"], "not": { "required": ["path"] } }
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signed_by", "signed_at", "content_sha256"],
+      "properties": {
+        "signed_by": { "type": "string" },
+        "signed_at": { "type": "string" },
+        "content_sha256": { "type": "string" }
+      }
+    }
+  }
+}

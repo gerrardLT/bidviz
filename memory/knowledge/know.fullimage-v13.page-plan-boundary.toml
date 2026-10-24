@@ -1,0 +1,53 @@
+schema = "bidviz.memory/v1"
+id = "know.fullimage-v13.page-plan-boundary"
+revision = 8
+kind = "knowledge"
+status = "machine_verified"
+title = "fullimage 与 V13 对 page-plan 的依赖不同"
+claim = "V13 把 page-plan 作为正文、表格、KPI 和模板的渲染真相；fullimage 只从中取章节标题与主类，正文来自 blocks 和 edits。"
+tags = ["fullimage", "page-plan", "v13"]
+created_at = "2026-10-22T13:34:38Z"
+updated_at = "2026-10-23T01:09:50Z"
+last_verified_at = "2026-10-23T01:09:50Z"
+valid_until = ""
+supersedes = []
+conflict_key = ""
+
+[scope]
+project = "*"
+engine = ""
+operation = "plan"
+section = ""
+page = ""
+provider = ""
+model = ""
+
+[[evidence]]
+kind = "source"
+ref = "src/bidviz_fullimage.py"
+hash = "e26fc230e7a3b4ef6a12e9e464920e66e7c959d947be1db69cbf4db08feb1b54"
+outcome = "pass"
+
+[[evidence]]
+kind = "source"
+ref = "src/bidviz_plan.py"
+hash = "c3871ed8f9c4b6e72175d2370182c8f6a1b03dd90a68b635cedb331561faa93f"
+outcome = "pass"
+
+[[evidence]]
+kind = "source"
+ref = "src/build_v13.py"
+hash = "c41bff4c6d0b82ab1029789493989e30c5be54c75fee4d99a859cfa8bdb6e98f"
+outcome = "pass"
+
+[[depends_on]]
+path = "src/bidviz_fullimage.py"
+expected_hash = "e26fc230e7a3b4ef6a12e9e464920e66e7c959d947be1db69cbf4db08feb1b54"
+
+[[depends_on]]
+path = "src/bidviz_plan.py"
+expected_hash = "c3871ed8f9c4b6e72175d2370182c8f6a1b03dd90a68b635cedb331561faa93f"
+
+[[depends_on]]
+path = "src/build_v13.py"
+expected_hash = "c41bff4c6d0b82ab1029789493989e30c5be54c75fee4d99a859cfa8bdb6e98f"

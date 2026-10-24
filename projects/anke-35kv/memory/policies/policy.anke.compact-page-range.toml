@@ -1,0 +1,50 @@
+schema = "bidviz.memory/v1"
+id = "policy.anke.compact-page-range"
+revision = 10
+kind = "policy"
+status = "human_signed"
+title = "安科压缩版总页数为 45–50"
+claim = "45–50 页目标仅适用于 anke-35kv，不得提升为其他项目的全局默认值。"
+tags = ["anke-35kv", "compact", "page-count"]
+created_at = "2026-10-22T13:34:38Z"
+updated_at = "2026-10-23T01:09:50Z"
+last_verified_at = "2026-10-23T01:09:50Z"
+valid_until = ""
+supersedes = []
+conflict_key = "anke.compact-page-range"
+
+[scope]
+project = "anke-35kv"
+engine = ""
+operation = "compact"
+section = ""
+page = ""
+provider = ""
+model = ""
+
+[authority]
+signed_by = "user"
+signed_at = "2026-10-22T13:34:38Z"
+content_sha256 = "38b0f51c2bea6a303f0cb4dbbf5d55280cafb349dc3ef5685e41efef214c56e8"
+
+[[evidence]]
+kind = "config"
+ref = "projects/anke-35kv/bidviz.toml"
+hash = "4ba02899d29420ad084b143c8801684e5511203b9943942924240ef1973c44a3"
+outcome = "pass"
+
+[[evidence]]
+kind = "test"
+ref = "tests/test_compact_target.py"
+hash = "dd799eae6484210d0f60588e7eb3b36d2c11de91b68e57e9d8150baffd3d1834"
+outcome = "pass"
+
+[[depends_on]]
+path = "bidviz.toml"
+expected_hash = "4ba02899d29420ad084b143c8801684e5511203b9943942924240ef1973c44a3"
+
+[[promotions]]
+from = "candidate"
+to = "human_signed"
+at = "2026-10-22T13:34:38Z"
+by = "user"

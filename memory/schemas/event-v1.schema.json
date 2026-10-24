@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bidviz.local/schemas/event-v1.schema.json",
+  "title": "BidViz run event v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema", "run_id", "seq", "timestamp", "event"],
+  "properties": {
+    "schema": { "const": "bidviz.event/v1" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "seq": { "type": "integer", "minimum": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "event": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "outcome": { "type": "string" },
+    "error_signature": { "type": "string" },
+    "workaround": { "type": "string" },
+    "memory_candidate": {
+      "type": "object",
+      "required": ["claim"],
+      "properties": {
+        "kind": { "type": "string" },
+        "title": { "type": "string" },
+        "claim": { "type": "string", "minLength": 1 },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "conflict_key": { "type": "string" }
+      }
+    }
+  }
+}

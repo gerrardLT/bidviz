@@ -1,0 +1,150 @@
+{
+  "schema": "bidviz-model-size-experiment/1",
+  "date": "2026-10",
+  "rows": [
+    {
+      "model": "gpt-image-2.5",
+      "tier": "2K",
+      "size": "2048x1448",
+      "actual": [
+        2048,
+        1448
+      ],
+      "kb": 3692,
+      "sec": 39.3,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2.5",
+      "tier": "4K",
+      "size": "4096x2896",
+      "actual": [
+        4096,
+        2896
+      ],
+      "kb": 10530,
+      "sec": 50.7,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2.5-flare",
+      "tier": "2K",
+      "size": "2048x1448",
+      "actual": [
+        2048,
+        1448
+      ],
+      "kb": 3710,
+      "sec": 35.9,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2.5-flare",
+      "tier": "4K",
+      "size": "4096x2896",
+      "actual": [
+        4096,
+        2896
+      ],
+      "kb": 13434,
+      "sec": 47.8,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2.5-sunburst",
+      "tier": "2K",
+      "size": "2048x1448",
+      "actual": [
+        2048,
+        1448
+      ],
+      "kb": 4606,
+      "sec": 45.9,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2.5-sunburst",
+      "tier": "4K",
+      "size": "4096x2896",
+      "actual": [
+        4096,
+        2896
+      ],
+      "kb": 10854,
+      "sec": 38.8,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2",
+      "tier": "2K",
+      "size": "2048x1448",
+      "actual": [
+        2048,
+        1448
+      ],
+      "kb": 3651,
+      "sec": 36.5,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2",
+      "tier": "4K",
+      "size": "4096x2896",
+      "actual": [
+        1536,
+        1086
+      ],
+      "kb": 2626,
+      "sec": 56.8,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2-5-sunburst",
+      "tier": "2K",
+      "size": "2048x1448",
+      "actual": [
+        2048,
+        1448
+      ],
+      "kb": 3757,
+      "sec": 49.3,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2-5-sunburst",
+      "tier": "4K",
+      "size": "4096x2896",
+      "actual": [
+        4096,
+        2896
+      ],
+      "kb": 10066,
+      "sec": 40.6,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2-5-flare",
+      "tier": "2K",
+      "size": "2048x1448",
+      "actual": [
+        2048,
+        1448
+      ],
+      "kb": 3520,
+      "sec": 33.6,
+      "ok": true
+    },
+    {
+      "model": "gpt-image-2-5-flare",
+      "tier": "4K",
+      "size": "4096x2896",
+      "actual": [
+        4096,
+        2896
+      ],
+      "kb": 11064,
+      "sec": 38.8,
+      "ok": true
+    }
+  ]
+}
