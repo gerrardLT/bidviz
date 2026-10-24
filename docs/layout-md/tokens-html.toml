@@ -1,0 +1,72 @@
+# HTML 混合引擎专用视觉 token（不改动已签认的 tokens.toml）
+# 依据：当前 103 页 PDF 第 2 页的矢量文字实测值 + 页面几何。
+# 单位：pt（CSS 直接使用 pt，1pt = 1/72in）。
+
+[page]
+width_mm = 297
+height_mm = 420
+margin_x = 40.0
+header_top = 18.0
+header_h = 24.0
+chapter_top = 68.0
+chapter_h = 60.0
+section_top = 150.0
+section_h = 42.0
+content_top_first = 214.0
+content_top_cont = 130.0
+content_bottom = 1140.0
+footer_top = 1152.0
+footer_h = 24.0
+
+[palette]
+header_bg = "#004890"
+header_text = "#ffffff"
+text_main = "#000000"
+text_sub = "#09245b"
+muted = "#5a6e7c"
+border = "#c1d0d9"
+accent_blue = "#004890"
+chapter_title = "#001f4e"
+section_title = "#0b2b5a"
+sub_title = "#072655"
+header_chapter = "#103164"
+header_project = "#727272"
+footer_text = "#626365"
+row_alt = "#f8fbfd"
+skyline = "#dbe7f1"
+section_band = "#ecf0fb"
+
+[typography]
+header_chapter = 18.3
+header_project = 13.5
+chapter_title = 33.0
+section_title = 22.5
+sub_section = 21.0
+level_three = 20.0
+table_header = 16.0
+table_body = 15.0
+body = 16.0
+caption = 11.0
+footer = 10.5
+page_no = 10.5
+
+[spacing]
+paragraph_gap = 9.0
+table_gap = 12.0
+figure_gap = 12.0
+cell_pad_x = 6.0
+cell_pad_y = 5.0
+line_height_body = 1.55
+line_height_table = 1.35
+
+[fonts]
+body = '"SimSun","Songti SC","Noto Serif CJK SC",serif'
+heading = '"Microsoft YaHei","SimHei","Noto Sans CJK SC",sans-serif'
+
+[components]
+kpi_gap = 10.0
+kpi_pad = 8.0
+kpi_value_size = 24.0
+figure_max_h = 430.0
+figure_pair_max_h = 280.0
+placeholder_h = 120.0
