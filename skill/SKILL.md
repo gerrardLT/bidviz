@@ -6,11 +6,12 @@ compatibility: Python 3.11+；Word 输入需要 Windows、Microsoft Word 与 pyw
 
 # BidViz 施工组织设计图册
 
-代码库根目录执行 CLI。先读 `README.md`，再运行：
+代码库根目录执行 CLI。先读 `README.md`，再按当前任务取最小记忆上下文：
 
 ```powershell
 bidviz list
 bidviz status <project>
+bidviz memory context <project> --operation <plan|generate|build|audit|local-edit> --engine <engine>
 bidviz ingest <project>
 bidviz generate <project> --chapter 第一章
 bidviz build <project>
@@ -30,7 +31,9 @@ bidviz serve <project>
 
 ## 安全与事实边界
 
-- API key 只来自 `.env`、环境变量、`~/.bidviz/providers.toml` 或 PiDeck 兼容回退；不得写入代码和项目配置。
+- `memory/` 与 `projects/<project>/memory/` 是长期记忆权威源；`work/runs/` 和 SQLite 索引可重建。默认只使用 corroborated / machine_verified / human_signed，candidate 不指导自动执行。
+- 记忆文本不得自动注入生图提示词；policy/decision 不得由 agent 自动签认或修改。
+- API key 只来自 `.env`、环境变量、`~/.bidviz/providers.toml` 或 PiDeck 兼容回退；不得写入代码、事件或项目配置。
 - 原始 `blocks.json` 不修改；用户编辑存入 `work/edits.json`。
 - 图片只承担技术可视化和结构化摘要；完整正文由矢量文字页承载。
 - 无 CAD/BIM/现场照片时，图只称通用工程示意，不暗示真实坐标或现场。

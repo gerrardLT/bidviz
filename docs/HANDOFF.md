@@ -1,7 +1,7 @@
 # BidViz 交付与适配清单
 
-> **跨会话续跑 / 换 agent 接手：先读 `docs/PROGRESS.md`**（阶段状态总表、验证命令、下一步任务、踩坑记录）。
-> 本文件只描述交付形态与适配条件；重构执行规划见 `docs/重构任务规划-V1.3.md`。
+> **跨会话续跑 / 换 agent 接手：先运行 `bidviz memory context <项目> --operation <任务> --engine <引擎>`，再读 `docs/PROGRESS.md` 的阶段摘要。**
+> `memory/` 与 `projects/<项目>/memory/` 是长期知识/签认决策的权威源；`work/runs/`、SQLite 索引和实时生成状态可重建。重构执行规划见 `docs/重构任务规划-V1.3.md`。
 
 ## 推荐交付形式
 
@@ -13,6 +13,14 @@
 4. 项目数据与核心代码分开；新客户只新增 `projects/<name>/`，不复制代码。
 
 不建议只交付 Skill。不同 harness 对 Skill 格式、工具权限和上下文策略各异，而命令行是共同最小接口。
+
+## 记忆与恢复
+
+- `memory/`：跨项目 verified procedure / knowledge 与 schema，进入版本控制。
+- `projects/<name>/memory/`：项目 human-signed policy / decision、证据和清理 manifest，进入版本控制。
+- `projects/<name>/work/runs/`：每次 CLI/Web 操作的脱敏 JSONL episode，不进入版本控制。
+- `projects/<name>/work/memory-index-*.sqlite3`：FTS 派生索引，可删除后用 `bidviz memory reindex` 重建。
+- 新机器恢复后先运行 `bidviz memory doctor <项目>`；若依赖哈希变化，相关记忆会变 stale，须复验而非强行启用。
 
 ## 其他 harness / IDE 的最低接入条件
 
@@ -82,19 +90,19 @@ copy .env.example .env
 - 服务账户、无桌面会话、Office 弹窗和文档损坏均可能导致 COM 失败。
 - 云端部署宜要求用户先上传 PDF，或另接 LibreOffice/headless 转换；当前不应把 Word COM 服务化。
 
-## 当前验收证据（2026-10-16 更新）
+## 当前验收证据（2026-10-23）
 
-> 系统重构进行中，执行规划见 `docs/重构任务规划-V1.3.md`，**阶段进度见 `docs/PROGRESS.md`（阶段 0/1/2 已完成）**。以下为**现状**证据：
-
-- 主产物：`projects/anke-35kv/output/施工组织设计-图册-A3.pdf`＝旧全文版 183 页 / A3 横向 / 29.9MB（**待阶段 7 重跑为 A3 竖版新体系**）
-- 新体系 golden page：`output/_样板-S003.pdf`（A3 竖版 T-B1，签认点②已冻结，哈希见 `work/frozen.json`）
-- 提炼式对照：`output/_校验-报表式.pdf`＝116 页 / 1803 行提炼内容 0 缺失 / 覆盖率 100%
-- 主视觉：`work/visuals-2k-yoshub/` 56 张；S018/S028 回退旧目录
-- Web：9 章 58 节；/api/doc、/api/section、/api/hero、/api/build、/api/audit 均通过
-- CLI：`bidviz status/build/serve` 通过（阶段 0 已修 cmd_build 审计键 KeyError；pyproject 已补 bidviz_plan/bidviz_layout）
-- 旧大体积产物（含 348MB DRAFT）已按 D6 授权清理，output 降至约 71MB
+- **正式交付物：`output/施工组织设计-图册-A3-fullimage-50p.pdf`（47 页 / 54.4MB，AI 压缩版）**——用户签认决策 `decision.anke.canonical-deliverable-compact-47p`。
+- 103 页 fullimage 全图册为初版对照，不再维护：102 页提示词基线 stale 保留原状、不重生成、不重签；fullimage 正式汇编门禁维持阻断属预期行为；S058 p1 v0002 待审候选无需处理。
+- 全量测试：181 tests OK。
+- fullimage current published：103 页独立发布图（初版资产，压缩版封面依赖其中的 S001）。
+- V13：114 页 / 11.0MB；HTML：117 页 / 7.0MB；legacy：183 页 / 28.5MB（均为对照/回退路线）。
+- 记忆控制面：11 条跨项目知识/程序、7 条项目 human_signed 策略/决策、1 条已 superseded 基线候选；CLI/Web health、context、candidate 与晋升/失效入口可用。
+- 深度清理：按 SHA manifest 删除约 4.35GiB；work 约 2.9GB→1.17GB，output 约 2.48GB→0.29GB；清单见 `projects/anke-35kv/memory/manifests/cleanup-2026-10-22*.json`。
+- 新体系 golden page：`output/_样板-S003.pdf`；签认哈希见 `work/frozen.json`。
 
 审计记录：`projects/anke-35kv/output/audit-vector.json`。
+
 
 ## 尚未产品化的部分
 
