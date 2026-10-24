@@ -30,3 +30,10 @@ output = "output"
 chapter_pattern = "^第[一二三四五六七八九十]+章"
 section_pattern = "^第[一二三四五六七八九十]+节"
 min_chars = 220
+
+[compact]
+# 本项目招标要求：总页数 45–50（含封面）。其他项目按各自要求改这里，0 = 不限制。
+min_pages = 45
+max_pages = 50
+max_chars_per_page = 2000
+max_sections_per_page = 2
