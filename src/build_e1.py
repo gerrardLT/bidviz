@@ -176,12 +176,16 @@ def build_final(root: Path, out_pdf: Path, limit: int | None = None,
     plan.ensure_plan(root)
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
     probe = out_pdf.with_name(out_pdf.stem + ".pass1.pdf")
+    final_tmp = out_pdf.with_name(out_pdf.stem + ".final-tmp.pdf")
     try:
         total, _ = build(root, probe, limit=limit, hero_dir=hero_dir, ensure=False)
-        pages, regions = build(root, out_pdf, total_pages=total, limit=limit, hero_dir=hero_dir,
-                               ensure=False)
+        pages, regions = build(root, final_tmp, total_pages=total, limit=limit,
+                               hero_dir=hero_dir, ensure=False)
+        import bidviz_ioutil
+        bidviz_ioutil.atomic_replace_from(final_tmp, out_pdf)
     finally:
         probe.unlink(missing_ok=True)
+        final_tmp.unlink(missing_ok=True)
 
     # ---- 附加门禁：audit_layout + issues（仅告警，不阻断） ----
     _run_post_gates(root, out_pdf)

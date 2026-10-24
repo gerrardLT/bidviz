@@ -352,8 +352,8 @@ def load_ledger(root: Path) -> dict:
 
 
 def save_ledger(root: Path, led: dict) -> None:
-    (out_dir(root) / LEDGER_NAME).write_text(
-        json.dumps(led, ensure_ascii=False, indent=2), encoding="utf-8")
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_write_json(out_dir(root) / LEDGER_NAME, led)
 
 
 def generate_page(root: Path, sid: str, page_no: int, total_pages: int,
@@ -704,7 +704,9 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
 
     root = Path(root)
     bv.set_page("A3", "portrait")
-    sheet = bv.Sheet(out_pdf)
+    # 原子交付：先写临时名，全部页成功后再替换正式 PDF，失败不破坏上一次成品
+    tmp_pdf = out_pdf.with_name(out_pdf.name + ".tmp.pdf")
+    sheet = bv.Sheet(tmp_pdf)
     footer_h = 24.0                     # 底部页码白边高（图不进入此带）
     n_pages = 0
     global_no = 0
@@ -743,13 +745,18 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
                 sheet.c.drawCentredString(0, 0, "DRAFT")
                 sheet.c.restoreState()
             built = build_fullpage_prompt(root, sid, i, len(pages), page_blocks)
-            hy = sheet.h - footer_h - 12 - len(built["hidden"]) * 8.4
+            hidden_lines: list[str] = []
             for line in built["hidden"]:
-                sheet.hidden_text(20, max(hy, 20), line[:160], 6.0)
+                hidden_lines.extend(line[j:j + 160] for j in range(0, len(line), 160))
+            hy = sheet.h - footer_h - 12 - len(hidden_lines) * 8.4
+            for line in hidden_lines:
+                sheet.hidden_text(20, max(hy, 20), line, 6.0)
                 hy += 8.4
             sheet.c.showPage()
             n_pages += 1
     sheet.c.save()
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_replace_from(tmp_pdf, out_pdf)
     print(f"[OK] fullimage 汇编：{n_pages} 页（全局页码 1..{global_no}）→ {out_pdf}")
     if export_pages:
         try:

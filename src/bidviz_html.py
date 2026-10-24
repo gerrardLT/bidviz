@@ -951,25 +951,31 @@ def _playwright_pdf(html_path: Path, out_pdf: Path) -> None:
 
 def render_pdf(html_path: Path, out_pdf: Path, browser: str) -> Path:
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
-    out_pdf.unlink(missing_ok=True)
-    if browser == "playwright" or playwright_available():
-        try:
-            _playwright_pdf(html_path, out_pdf)
-        except Exception as exc:
-            print(f"[WARN] Playwright 打印失败：{exc}", flush=True)
-            if browser == "playwright":
-                raise
-    if not out_pdf.is_file() or out_pdf.stat().st_size < 1000:
-        args = _chrome_flags(browser) + [
-            f"--print-to-pdf={out_pdf.resolve()}",
-            Path(html_path).resolve().as_uri(),
-        ]
-        proc = _run_browser(browser, args, timeout=300)
-        if not out_pdf.is_file() or out_pdf.stat().st_size < 1000:
-            raise RuntimeError(
-                "HTML→PDF 失败：\n"
-                f"exit={proc.returncode}\nstdout={proc.stdout[-1000:]}\nstderr={proc.stderr[-2000:]}")
-    return out_pdf
+    # 原子交付：渲染到临时名，成功后替换；失败保留旧成品，不出现 404 窗口
+    import bidviz_ioutil
+    tmp_pdf = out_pdf.with_name(out_pdf.name + ".tmp.pdf")
+    tmp_pdf.unlink(missing_ok=True)
+    try:
+        if browser == "playwright" or playwright_available():
+            try:
+                _playwright_pdf(html_path, tmp_pdf)
+            except Exception as exc:
+                print(f"[WARN] Playwright 打印失败：{exc}", flush=True)
+                if browser == "playwright":
+                    raise
+        if not tmp_pdf.is_file() or tmp_pdf.stat().st_size < 1000:
+            args = _chrome_flags(browser) + [
+                f"--print-to-pdf={tmp_pdf.resolve()}",
+                Path(html_path).resolve().as_uri(),
+            ]
+            proc = _run_browser(browser, args, timeout=300)
+            if not tmp_pdf.is_file() or tmp_pdf.stat().st_size < 1000:
+                raise RuntimeError(
+                    "HTML→PDF 失败：\n"
+                    f"exit={proc.returncode}\nstdout={proc.stdout[-1000:]}\nstderr={proc.stderr[-2000:]}")
+        return bidviz_ioutil.atomic_replace_from(tmp_pdf, out_pdf)
+    finally:
+        tmp_pdf.unlink(missing_ok=True)
 
 
 def export_pages(pdf_path: Path, pages: Sequence[HtmlPage], out_dir: Path,
@@ -1163,9 +1169,8 @@ def _load_ledger(root: Path) -> dict[str, Any]:
 
 
 def _save_ledger(root: Path, led: dict[str, Any]) -> None:
-    p = _ledger_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(led, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_write_json(_ledger_path(root), led)
 
 
 def generate_illustrations(root: Path, ids: Sequence[str], force: bool = False,

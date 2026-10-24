@@ -97,9 +97,8 @@ def load_ledger(root: Path) -> dict[str, Any]:
 
 
 def save_ledger(root: Path, led: dict[str, Any]) -> None:
-    p = ledger_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(led, ensure_ascii=False, indent=2), encoding="utf-8")
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_write_json(ledger_path(root), led)
 
 
 def figure_progress(root: Path) -> dict[str, Any]:

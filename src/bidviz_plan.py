@@ -527,10 +527,8 @@ def load_plan(root: Path) -> dict | None:
 
 
 def save_plan(root: Path, plan: dict) -> Path:
-    p = plan_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
-    return p
+    import bidviz_ioutil
+    return bidviz_ioutil.atomic_write_json(plan_path(root), plan)
 
 
 def _load_sections(root: Path) -> list[Any]:
@@ -956,8 +954,8 @@ def build_page_plan(root: Path, only: Sequence[str] | None = None,
         "sections": out,
     }
     p = page_plan_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_write_json(p, plan)
     return plan
 
 

@@ -1242,13 +1242,15 @@ def _query_index(index_path: Path, query: str) -> tuple[list[tuple[dict[str, Any
             len(stripped_query) <= 2 and bool(stripped_query)
         )
         if not query.strip():
-            rows = connection.execute("SELECT record_json, 0.0 AS rank FROM records ORDER BY id").fetchall()
+            rows = connection.execute(
+                "SELECT record_json, path, 0.0 AS rank FROM records ORDER BY id").fetchall()
             mode = "all"
         elif fts_enabled and not short_query:
             try:
                 rows = connection.execute(
                     """
-                    SELECT records.record_json, bm25(records_fts) AS rank
+                    SELECT records.record_json, records.path,
+                           bm25(records_fts) AS rank
                     FROM records_fts JOIN records ON records.id = records_fts.id
                     WHERE records_fts MATCH ? ORDER BY rank, records.id
                     """,
@@ -1263,7 +1265,8 @@ def _query_index(index_path: Path, query: str) -> tuple[list[tuple[dict[str, Any
         else:
             rows = _like_rows(connection, query)
             mode = "like"
-        return [(json.loads(row["record_json"]), float(row["rank"])) for row in rows], mode
+        return [(json.loads(row["record_json"]), float(row["rank"]), row["path"])
+                for row in rows], mode
     finally:
         connection.close()
 
@@ -1271,7 +1274,8 @@ def _query_index(index_path: Path, query: str) -> tuple[list[tuple[dict[str, Any
 def _like_rows(connection: sqlite3.Connection, query: str) -> list[sqlite3.Row]:
     escaped = query.casefold().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return connection.execute(
-        "SELECT record_json, 0.0 AS rank FROM records WHERE lower(search_text) LIKE ? ESCAPE '\\' ORDER BY id",
+        "SELECT record_json, path, 0.0 AS rank FROM records "
+        "WHERE lower(search_text) LIKE ? ESCAPE '\\' ORDER BY id",
         (f"%{escaped}%",),
     ).fetchall()
 
@@ -1323,14 +1327,14 @@ def search_records(
         indexed = []
     if not indexed and (not query.strip() or mode == "scan"):
         indexed = [
-            (record, 0.0)
+            (record, 0.0, None)
             for record in list_records(root)
             if _record_matches_query(record, query)
         ]
     requested_statuses = set(statuses) if statuses is not None else None
     result: list[dict[str, Any]] = []
     base = _project_base(root)
-    for record, rank in indexed:
+    for record, rank, src_path in indexed:
         details = status_details(record, base_dir=base, now=now, subjects=subjects)
         status = str(details["effective_status"])
         if requested_statuses is not None:
@@ -1345,7 +1349,9 @@ def search_records(
         item["effective_reasons"] = details["reasons"]
         item["search_mode"] = mode
         item["score"] = _status_priority(record, status, scope) - rank
-        path = find_record_path(root, str(record["id"]))
+        # 索引里已有相对路径，直接用；失配（文件被移动）才回退全库扫描
+        path = (root / src_path) if src_path and (root / src_path).is_file() \
+            else find_record_path(root, str(record["id"]))
         if path is not None:
             item["_path"] = path.relative_to(root).as_posix()
         result.append(item)

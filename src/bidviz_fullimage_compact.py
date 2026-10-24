@@ -320,9 +320,8 @@ def _load_ledger(root: Path, name: str = LEDGER) -> dict[str, Any]:
 
 
 def _save_ledger(root: Path, led: dict[str, Any], name: str = LEDGER) -> None:
-    p = _ledger_path(root, name)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(led, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_write_json(_ledger_path(root, name), led)
 
 
 def generate_group(root: Path, group: PageGroup, force: bool = False,
@@ -433,7 +432,9 @@ def assemble(root: Path, out_pdf: Path | None = None) -> Path:
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
 
     bv.set_page("A3", "portrait")
-    sheet = bv.Sheet(out_pdf)
+    # 原子交付：先写临时名，全部页成功后再替换正式 PDF
+    tmp_pdf = out_pdf.with_name(out_pdf.name + ".tmp.pdf")
+    sheet = bv.Sheet(tmp_pdf)
     footer_h = 24.0
     n = 0
 
@@ -472,6 +473,8 @@ def assemble(root: Path, out_pdf: Path | None = None) -> Path:
                 chunks.append(line[i:i + 150])
         add_page(img, chunks, str(g.get("chapter", "")))
     sheet.c.save()
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_replace_from(tmp_pdf, out_pdf)
     print(f"[OK] 压缩全图版：{n} 页 → {out_pdf}")
     return out_pdf
 
