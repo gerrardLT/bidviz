@@ -41,10 +41,22 @@ Thumbs.db
 /audit-layout.json
 /audit-vector.json
 
-# 本地工具状态（mimosa 安全扫描插件的会话快照，机器本地，不入库）
+# 本地工具状态（机器本地，不入库）
 .mimosa/
+.playwright-mcp/
+.zcode/
+/work/
+projects/*/work/runs/
+projects/*/work/memory-index*.sqlite3
 
 # golden page 签认产物白名单（签认点②冻结件；必须放在 _*.png/_*.pdf 之后，最后匹配获胜）
 !projects/*/output/_样板-S003.pdf
 !projects/*/output/_样板-S003-contact-sheet.png
 !projects/*/output/audit-layout-S003.json
+
+# archify 本地产物（图与凭据）
+.archify/
+
+# memory 跨进程文件锁（瞬态运行时产物，不入库）
+memory/**/*.lock
+projects/*/memory/**/*.lock
