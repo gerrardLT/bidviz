@@ -2,12 +2,14 @@
 """bidviz_local_edit —— 全图局部改字（人工框选，OCR 门禁暂缓）。
 
 流程：原图裁一块足够大的上下文 → 只对框内画遮罩 → 调 /images/edits →
-把返回结果回缩到裁剪尺寸 → 只合成遮罩区域（含色彩迁移/羽化）→ 输出新图。
+把返回结果回缩到裁剪尺寸 → 取遮罩内补丁按原坐标贴回 → 补丁边缘羽化 +
+用模型背景环带做色彩对齐 → 只合成遮罩区域 → 输出新图。
 
 关键约束（2026-10-21 实测）：
 - 整页 mask 会让接口重绘整张画布，绝不能整页替换；
 - 裁剪窗口小于 1024x512 容易 400；返回尺寸可能是请求的 1.125 倍；
-- 合成必须只取遮罩区域，遮罩外像素保持原样。
+- 合成必须只取遮罩区域，遮罩外像素保持原样；
+- 补丁按模型返回的原始坐标贴回，不再重新居中，避免位置/基线漂移。
 
 命令行：
   python -m src.bidviz_local_edit import --root projects/anke-35kv
@@ -17,7 +19,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import sys
@@ -34,7 +35,10 @@ MIN_BOX = 8
 MASK_PAD = 6
 ERODE = 3
 FEATHER = 2
+PATCH_ERODE = 1
+PATCH_FEATHER = 2
 MAX_TEXT = 200
+MIN_INSIDE_CHANGED = 12
 A3_RATIO = 297 / 420
 OUTSIDE_MARGIN = 12
 
@@ -100,6 +104,10 @@ def _color_transfer(original: Image.Image, edited: Image.Image, ring: Image.Imag
         return edited
     o_med, e_med = orig.median, edit.median
     o_std, e_std = orig.stddev, edit.stddev
+    # 模型返回的近黑/纯白区域不能当背景样本（常见于遮罩外/未生成区域）
+    o_mean, e_mean = sum(o_med) / 3, sum(e_med) / 3
+    if (e_mean < 8 and o_mean > 30) or (e_mean > 247 and o_mean < 220):
+        return edited
     luts = []
     for i in range(3):
         std = e_std[i]
@@ -117,7 +125,7 @@ def _color_transfer(original: Image.Image, edited: Image.Image, ring: Image.Imag
 
 def composite(original: Image.Image, edited: Image.Image, mask: Image.Image,
               erode: int = ERODE, feather: int = FEATHER) -> Image.Image:
-    """只把遮罩区域合成回原图；遮罩外不动。"""
+    """只把遮罩区域合成回原图；遮罩外不动（色彩对齐在贴补丁前完成）。"""
     if original.size != edited.size or original.size != mask.size:
         raise ValueError("original/edited/mask 尺寸不一致")
     core = mask
@@ -129,17 +137,49 @@ def composite(original: Image.Image, edited: Image.Image, mask: Image.Image,
                 core = eroded
         except Exception:
             core = mask
-    # 优先用遮罩内侧的环带做色彩对齐：这里的返回值是模型生成的真实背景，
-    # 遮罩外返回的黑色不会污染统计。
-    ring = ImageChops.subtract(mask, core)
-    if ring.getbbox() is None:
-        try:
-            ring = ImageChops.subtract(mask.filter(ImageFilter.MaxFilter(9)), mask)
-        except Exception:
-            ring = mask
     alpha = core.filter(ImageFilter.GaussianBlur(feather)) if feather > 0 else core
-    adjusted = _color_transfer(original, edited, ring)
-    return Image.composite(adjusted, original, alpha)
+    return Image.composite(edited, original, alpha)
+
+
+def _boundary_ring(patch: tuple[int, int, int, int], size: tuple[int, int],
+                   thickness: int = 3) -> Image.Image | None:
+    """补丁自身的内沿环带，用于补丁几乎占满遮罩时的背景采样。"""
+    width, height = size
+    x0, y0, x1, y1 = (int(round(float(v))) for v in patch)
+    x0, y0 = max(0, x0), max(0, y0)
+    x1, y1 = min(width, x1), min(height, y1)
+    if x1 - x0 < thickness * 2 + 2 or y1 - y0 < thickness * 2 + 2:
+        return None
+    ring = Image.new("L", size, 0)
+    ImageDraw.Draw(ring).rectangle((x0, y0, x1 - 1, y1 - 1), fill=255)
+    inner = ring.filter(ImageFilter.MinFilter(thickness * 2 + 1))
+    band = ImageChops.subtract(ring, inner)
+    return band if band.getbbox() is not None else None
+
+
+def _color_ring(patch: tuple[int, int, int, int], mask_box: tuple[int, int, int, int],
+                size: tuple[int, int]) -> Image.Image | None:
+    """取补丁外、遮罩内的模型背景；补丁占满遮罩时退回补丁内沿。"""
+    mask_img = Image.new("L", size, 0)
+    ImageDraw.Draw(mask_img).rectangle(mask_box, fill=255)
+    patch_img = Image.new("L", size, 0)
+    ImageDraw.Draw(patch_img).rectangle(patch, fill=255)
+    ring = ImageChops.subtract(mask_img, patch_img)
+    if ring.getbbox() is not None:
+        # 跳过补丁外 3px：_patch_bbox 会内缩 2px，紧贴补丁的一圈仍可能是模型文字边缘
+        ring = ImageChops.subtract(ring, patch_img.filter(ImageFilter.MaxFilter(7)))
+        if ring.getbbox() is not None:
+            return ring
+    return _boundary_ring(patch, size)
+
+
+def _inside_diff(source: Image.Image, output: Image.Image,
+                 box: tuple[int, int, int, int]) -> tuple[int, int]:
+    """返回框内 (最大通道差, 变化像素数)。"""
+    diff = ImageChops.difference(source.convert("RGB"), output.convert("RGB")).convert("L")
+    region = diff.crop(box)
+    hist = region.histogram()
+    return int(region.getextrema()[1]), int(sum(hist[1:]))
 
 
 def _outside_diff(source: Image.Image, output: Image.Image,
@@ -157,8 +197,9 @@ def _outside_diff(source: Image.Image, output: Image.Image,
 
 
 def manual_checks(source: Image.Image, output: Image.Image, box: tuple[int, int, int, int],
-                  min_width: int = 2048) -> dict[str, Any]:
-    """无 OCR 的人工门禁：几何、合成范围、待人工复核。"""
+                  min_width: int = 2048,
+                  user_box: tuple[int, int, int, int] | None = None) -> dict[str, Any]:
+    """无 OCR 的人工门禁：几何、合成范围、空改检测、待人工复核。"""
     checks: list[dict[str, Any]] = []
 
     def add(code: str, level: str, message: str, evidence: str = "") -> None:
@@ -191,6 +232,26 @@ def manual_checks(source: Image.Image, output: Image.Image, box: tuple[int, int,
     else:
         add("outside-unchanged", "block", "框外像素被改动",
             f"max={max_diff}, changed={changed}")
+    inside = user_box or box
+    ix0, iy0 = max(0, int(inside[0])), max(0, int(inside[1]))
+    ix1, iy1 = min(sw, int(inside[2])), min(sh, int(inside[3]))
+    if (sw, sh) != (ow, oh):
+        add("inside-change", "block", "尺寸不一致，无法校验框内变化",
+            f"{sw}x{sh} vs {ow}x{oh}")
+    elif ix1 - ix0 < 1 or iy1 - iy0 < 1:
+        add("inside-change", "block", "框内区域无效", f"{inside}")
+    else:
+        in_max, in_changed = _inside_diff(source, output, (ix0, iy0, ix1, iy1))
+        if in_changed == 0 or in_max <= 1:
+            add("inside-change", "block", "框内像素未变化：模型没有改写内容",
+                f"max={in_max}, changed={in_changed}")
+        elif in_changed < MIN_INSIDE_CHANGED:
+            add("inside-change", "warn",
+                f"框内仅 {in_changed} 个像素变化，请放大确认",
+                f"max={in_max}, changed={in_changed}")
+        else:
+            add("inside-change", "pass", f"框内变化 {in_changed} 个像素",
+                f"max={in_max}, changed={in_changed}")
     add("edit-box", "pass", f"改字框 {box[2] - box[0]}x{box[3] - box[1]} 合法")
     add("manual-review", "warn", "OCR 门禁待办：请放大到 1:1/3x 人工复核改字结果")
 
@@ -270,19 +331,32 @@ def apply_local_edit(source_image: str | Path, box: Any, text: str, output: str 
                 raise ValueError(f"改字返回尺寸 {raw.size} 与裁剪比例不符 {crop.size}")
             raw = raw.resize(crop.size, Image.LANCZOS)
 
-    user_local = (user_box[0] - crop_box[0], user_box[1] - crop_box[1],
-                  user_box[2] - crop_box[0], user_box[3] - crop_box[1])
-    patch_box = _patch_bbox(raw, user_local)
+    mask_local = (box2[0] - crop_box[0], box2[1] - crop_box[1],
+                  box2[2] - crop_box[0], box2[3] - crop_box[1])
+    patch_box = _patch_bbox(raw, mask_local)
     if patch_box is None:
         raise ValueError("改字接口返回空白，请重试或换一个更大的框")
-    content = raw.crop(patch_box)
-    user_w, user_h = user_box[2] - user_box[0], user_box[3] - user_box[1]
-    if content.width > user_w * 1.5 or content.height > user_h * 1.5:
-        content = content.resize((user_w, user_h), Image.LANCZOS)
-    paste_x = (user_box[0] + user_box[2]) // 2 - content.width // 2
-    paste_y = (user_box[1] + user_box[3]) // 2 - content.height // 2
-    edited_full = source.copy()
-    edited_full.paste(content, (paste_x, paste_y))
+    # 用模型返回图里、补丁外沿的背景做色彩对齐；不再拿原图的环带冒充模型输出。
+    ring = _color_ring(patch_box, mask_local, crop.size)
+    adjusted = _color_transfer(crop, raw, ring) if ring is not None else raw
+    content = adjusted.crop(patch_box)
+    # 按模型返回的原始坐标贴回，不做重新居中，避免文字位移/基线漂移。
+    paste_x = crop_box[0] + patch_box[0]
+    paste_y = crop_box[1] + patch_box[1]
+    patched = source.copy()
+    patched.paste(content, (paste_x, paste_y))
+    # 羽化补丁自身的边缘，而不是只羽化 6px 外的遮罩外沿。
+    patch_alpha = Image.new("L", source.size, 0)
+    ImageDraw.Draw(patch_alpha).rectangle(
+        (paste_x, paste_y, paste_x + content.width - 1, paste_y + content.height - 1),
+        fill=255)
+    short = min(content.width, content.height)
+    if short >= 24:
+        patch_alpha = patch_alpha.filter(ImageFilter.MinFilter(PATCH_ERODE * 2 + 1))
+        patch_alpha = patch_alpha.filter(ImageFilter.GaussianBlur(PATCH_FEATHER))
+    elif short >= 12:
+        patch_alpha = patch_alpha.filter(ImageFilter.GaussianBlur(1))
+    edited_full = Image.composite(patched, source, patch_alpha)
     full_mask = Image.new("L", source.size, 0)
     full_mask.paste(mask, crop_box[:2])
     result = composite(source, edited_full, full_mask)
@@ -292,6 +366,8 @@ def apply_local_edit(source_image: str | Path, box: Any, text: str, output: str 
     meta = {
         "box": list(box2), "user_box": [int(round(float(v))) for v in box],
         "crop": list(crop_box), "text": text, "note": note,
+        "patch": [paste_x, paste_y, paste_x + content.width, paste_y + content.height],
+        "color_fit": ring is not None,
         "prompt": prompt, "provider": prov, "model": mod,
         "requested_size": f"{crop.width}x{crop.height}",
         "raw_size": f"{raw_size[0]}x{raw_size[1]}",
@@ -305,24 +381,10 @@ def apply_local_edit(source_image: str | Path, box: Any, text: str, output: str 
 
 
 def page_context(root: Path, sid: str, page_no: int, section_title: str) -> dict[str, Any]:
-    """统一的分页/哈希口径：Web 候选、回填、局部改字都从这里取。"""
+    """Compatibility entry point for the canonical full-image page context."""
     import bidviz_fullimage as fullimage
 
-    root = Path(root)
-    blocks = fullimage._section_blocks(root, sid)
-    pages = fullimage.split_pages(blocks)
-    if page_no < 1 or page_no > len(pages):
-        raise IndexError(f"{sid} 无第 {page_no} 页（共 {len(pages)} 页）")
-    page_blocks = pages[page_no - 1]
-    built = fullimage.build_fullpage_prompt(root, sid, page_no, len(pages), page_blocks)
-    source_text = "\n".join(text for _kind, text in page_blocks)
-    return {"sid": sid, "page": page_no, "total_pages": len(pages),
-            "page_blocks": page_blocks, "built": built, "auto_prompt": built["prompt"],
-            "source_text": source_text,
-            "source_hash": hashlib.sha256((section_title + "\n" + source_text).encode("utf-8")).hexdigest(),
-            "template_hash": hashlib.sha256(fullimage.PROMPT_TEMPLATE.read_text(encoding="utf-8").encode("utf-8")).hexdigest(),
-            "prompt_hash": hashlib.sha256(built["prompt"].encode("utf-8")).hexdigest(),
-            "cover": bool(built.get("cover"))}
+    return fullimage.page_context(Path(root), sid, page_no, section_title)
 
 
 def _sections(root: Path):
@@ -447,13 +509,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     import bidviz_fullimage_store as store
-    if args.base_version:
+    page = store.get_page(root, args.sid, args.page)
+    publication = (page.get("published") or {}).get("current") or {}
+    if args.base_version and int(publication.get("version", -1)) == args.base_version:
+        source = root / publication.get(
+            "published_path", store.published_path(root, args.sid, args.page).relative_to(root).as_posix())
+    elif args.base_version:
         meta = store.get_candidate(root, args.sid, args.page, args.base_version)
-        if not meta:
-            raise SystemExit(f"候选不存在：{args.sid} p{args.page} v{args.base_version:04d}")
+        if not meta or not meta.get("artifact_exists"):
+            raise SystemExit(f"候选不存在或已裁剪：{args.sid} p{args.page} v{args.base_version:04d}")
         source = root / meta["path"]
     else:
-        source = store.published_path(root, args.sid, args.page)
+        source = root / publication.get(
+            "published_path", store.published_path(root, args.sid, args.page).relative_to(root).as_posix())
         if not source.is_file():
             candidates = store.list_candidates(root, args.sid, args.page)
             source = root / candidates[-1]["path"] if candidates else \

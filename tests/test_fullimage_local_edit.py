@@ -99,12 +99,30 @@ class CompositeTests(unittest.TestCase):
     def test_manual_checks_pass_and_warn(self):
         source = _page()
         out = source.copy()
+        ImageDraw.Draw(out).rectangle((45, 45, 70, 70), fill=(0, 0, 0))
         box = (40, 40, 80, 80)
         checks = le.manual_checks(source, out, box, min_width=64)
         self.assertNotEqual(checks["status"], "block")
         codes = {c["code"]: c["level"] for c in checks["checks"]}
         self.assertEqual(codes["manual-review"], "warn")
         self.assertEqual(codes["outside-unchanged"], "pass")
+        self.assertEqual(codes["inside-change"], "pass")
+
+    def test_manual_checks_blocks_noop(self):
+        source = _page()
+        out = source.copy()
+        checks = le.manual_checks(source, out, (40, 40, 80, 80), min_width=64)
+        codes = {c["code"]: c["level"] for c in checks["checks"]}
+        self.assertEqual(codes["inside-change"], "block")
+        self.assertEqual(checks["status"], "block")
+
+    def test_color_ring_uses_model_background_outside_patch(self):
+        ring = le._color_ring((20, 20, 40, 40), (10, 10, 60, 60), (100, 100))
+        self.assertIsNotNone(ring)
+        self.assertEqual(ring.getpixel((14, 14)), 255)   # 遮罩内、补丁外 3px 以上
+        self.assertEqual(ring.getpixel((30, 30)), 0)     # 补丁内
+        self.assertEqual(ring.getpixel((5, 5)), 0)       # 遮罩外
+        self.assertEqual(ring.getpixel((18, 30)), 0)     # 补丁外紧邻 3px 也排除
 
     def test_manual_checks_block_wrong_size_or_outside_change(self):
         source = _page()
@@ -157,6 +175,57 @@ class ApplyEditTests(unittest.TestCase):
                 le.apply_local_edit(src, [10, 10, 60, 60], "   ", Path(tmp) / "o.png")
             with self.assertRaises(ValueError):
                 le.apply_local_edit(src, [10, 10, 60, 60], "字" * 201, Path(tmp) / "o.png")
+
+    def test_apply_local_edit_pastes_at_model_coordinates(self):
+        class FakeAt:
+            def edit(self, prompt, image, mask, output, size=None, recorder=None):
+                im = Image.open(image).convert("RGB")
+                ImageDraw.Draw(im).rectangle((380, 200, 392, 216), fill=(255, 255, 255))
+                im.save(output)
+                if recorder is not None:
+                    recorder.update({"image_sha256": "i", "mask_sha256": "m",
+                                     "output_sha256": "o"})
+                return Path(output)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "src.png"
+            out = root / "out.png"
+            Image.new("RGB", (2048, 2896), (5, 8, 12)).save(source)
+            with patch.object(le, "_api", return_value=(FakeAt(), "test", "fake")):
+                le.apply_local_edit(source, [900, 190, 1200, 260], "挖", out)
+            with Image.open(out) as im:
+                # 模型在裁剪图 (380,200) 画的字，原图坐标应为 crop x=538 + 382
+                self.assertGreater(im.getpixel((924, 208))[0], 200)
+                # 旧实现会把它重新居中到用户框中心 (1050,225)，这里必须仍是背景
+                self.assertLess(im.getpixel((1050, 225))[0], 40)
+
+
+class PageContextTests(unittest.TestCase):
+    def test_cli_base_version_can_use_pruned_published_candidate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store.ensure_page(root, "S001", 1, "src", "tpl", "prm")
+            image = root / "legacy.png"
+            _page((100, 141)).save(image)
+            store.import_published(root, "S001", 1, image, {"kind": "legacy-import"})
+            store.compact_candidates(root)
+            output = root / "out.png"
+            with patch.object(le, "apply_local_edit", return_value={"ok": True}) as apply:
+                code = le.main([
+                    "edit", "--root", str(root), "--sid", "S001", "--page", "1",
+                    "--base-version", "1", "--box", "10,10,50,50", "--text", "挖",
+                    "--out", str(output),
+                ])
+            self.assertEqual(code, 0)
+            self.assertEqual(apply.call_args.args[0], store.published_path(root, "S001", 1))
+
+    def test_page_context_delegates_to_fullimage(self):
+        expected = {"source_hash": "shared"}
+        with patch("bidviz_fullimage.page_context", return_value=expected) as shared:
+            actual = le.page_context(Path("project"), "S001", 2, "section")
+        self.assertIs(actual, expected)
+        shared.assert_called_once_with(Path("project"), "S001", 2, "section")
 
 
 class StoreImportTests(unittest.TestCase):

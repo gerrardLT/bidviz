@@ -14,6 +14,8 @@ gpt-image-2 实测不支持 n>1，报 "n currently supports 1 only"）。
   work/fullimage/Sxxx_pN[_vK].png     整页图
   work/fullimage/ledger.json          台账（提示词快照/尺寸/耗时/耗时）
   output/施工组织设计-图册-A3-fullimage.pdf   整图页 + 隐藏层汇编
+  output/page-images/<PDF名>/001_Sxxx_pN.png  按真实 PDF 页码导出的页图
+                                              （index.json/csv 记录映射）
 
 用法：
   python -m bidviz_fullimage projects/anke-35kv --section S003 --dry-run
@@ -23,8 +25,13 @@ gpt-image-2 实测不支持 n>1，报 "n currently supports 1 only"）。
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
+import io
 import json
+import os
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -282,9 +289,12 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
                 "meta": {"sid": sid, "main_class": main, "page": page_no,
                          "total": total_pages, "chars": len(source_text)}}
 
-    page_note = ("\n本页只编排上面给出的本页主题与原文分段；"
-                 "不要重复其他页面已经呈现的内容，不要编造分段之外的工序或参数，严禁标注页码或任何（续）字样。"
-                 if total_pages > 1 else "")
+    page_note = ("\n下面「」内是正文原文，必须逐字保留；「」只是正文边界标记，不要绘制到页面中。"
+                 "\n本页只编排上面给出的本页主题与原文分段；"
+                 "不要重复其他页面已经呈现的内容，不要编造分段之外的工序或参数，"
+                 "严禁标注页码或任何（续）字样。"
+                 if total_pages > 1 else
+                 "\n下面「」内是正文原文，必须逐字保留；「」只是正文边界标记，不要绘制到页面中。")
 
     tpl = PROMPT_TEMPLATE.read_text(encoding="utf-8")
     from bidviz_config import get as _cfg2
@@ -294,10 +304,32 @@ def build_fullpage_prompt(root: Path, sid: str, page_no: int = 1,
               .replace("{{project_name}}", project_name)
               .replace("{{class_imagery}}", CLASS_IMAGERY.get(main, CLASS_IMAGERY["B"]))
               .replace("{{page_note}}", page_note)
-              .replace("{{source_text}}", source_text))
+              .replace("{{source_text}}", "「\n" + source_text + "\n」"))
     return {"prompt": prompt, "hidden": [t for _k, t in page_blocks], "cover": False,
             "meta": {"sid": sid, "main_class": main, "page": page_no,
                      "total": total_pages, "chars": len(source_text)}}
+
+
+def page_context(root: Path, sid: str, page_no: int, section_title: str) -> dict[str, Any]:
+    """统一的分页/哈希口径：Web 候选、回填、局部改字都从这里取。
+
+    source_hash 必须与 web 历史口径一致：sha256(section_title + "\\n" + source_text)。
+    """
+    root = Path(root)
+    blocks = _section_blocks(root, sid)
+    pages = split_pages(blocks)
+    if page_no < 1 or page_no > len(pages):
+        raise IndexError(f"{sid} 无第 {page_no} 页（共 {len(pages)} 页）")
+    page_blocks = pages[page_no - 1]
+    built = build_fullpage_prompt(root, sid, page_no, len(pages), page_blocks)
+    source_text = "\n".join(text for _kind, text in page_blocks)
+    source_hash = hashlib.sha256((section_title + "\n" + source_text).encode("utf-8")).hexdigest()
+    template_hash = hashlib.sha256(PROMPT_TEMPLATE.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+    return {"sid": sid, "page": page_no, "total_pages": len(pages),
+            "page_blocks": page_blocks, "built": built, "auto_prompt": built["prompt"],
+            "source_text": source_text, "source_hash": source_hash,
+            "template_hash": template_hash, "prompt_hash": hashlib.sha256(built["prompt"].encode("utf-8")).hexdigest(),
+            "cover": bool(built.get("cover"))}
 
 
 # ---------------------------------------------------------------- 生图
@@ -448,11 +480,221 @@ def chapter_sids(root: Path, chapter_kw: str) -> list[str]:
             if chapter_kw in pp["sections"][sid]["pages"][0]["title"]["chapter"]]
 
 
+# ---------------------------------------------------------------- 按 PDF 页码导出
+
+PAGE_IMAGES_DIR = "output/page-images"
+
+
+def page_images_dir(root: Path, pdf_path: Path) -> Path:
+    """一册 PDF 对应一个页图目录：output/page-images/<PDF 文件名>/。"""
+    return Path(root) / PAGE_IMAGES_DIR / Path(pdf_path).stem
+
+
+def _resolve(root: Path, path: str | Path) -> Path:
+    """绝对路径原样；相对路径优先按 CWD 解析（命令行输入），否则按项目根解析。"""
+    p = Path(path)
+    if p.is_absolute():
+        return p
+    if p.exists():
+        return p
+    return Path(root) / p
+
+
+def _rel(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(Path(root).resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def _link_or_copy(src: Path, dst: Path, force_copy: bool = False) -> str:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.unlink(missing_ok=True)
+    if not force_copy:
+        try:
+            os.link(src, dst)          # 同一卷上的硬链接，不额外占用磁盘
+            return "hardlink"
+        except OSError:
+            pass
+    shutil.copy2(src, dst)
+    return "copy"
+
+
+def _jpeg_sha256(path: Path) -> str:
+    """按汇编时的参数（RGB / JPEG q85 / optimize）复算指纹，用于把页面对回源 PNG。"""
+    from PIL import Image
+    with Image.open(path) as im:
+        if im.mode in ("RGBA", "LA", "P"):
+            rgba = im.convert("RGBA")
+            bg = Image.new("RGB", rgba.size, "white")
+            bg.paste(rgba, mask=rgba.split()[-1])
+            rgb = bg
+        else:
+            rgb = im.convert("RGB")
+        buf = io.BytesIO()
+        rgb.save(buf, "JPEG", quality=85, optimize=True)
+    return hashlib.sha256(buf.getvalue()).hexdigest()
+
+
+def _expected_picks(root: Path) -> list[dict[str, Any]]:
+    """按 page-plan 顺序展开每节的语义分页，并列出该页可用的源图候选。"""
+    import bidviz_plan as plan_mod
+    root = Path(root)
+    pp = plan_mod.load_page_plan(root) or {}
+    picks = []
+    for sid in sorted(pp.get("sections", {}).keys()):
+        pages = split_pages(_section_blocks(root, sid))
+        for i in range(1, len(pages) + 1):
+            picks.append({
+                "sid": sid,
+                "section_page": i,
+                "candidates": sorted(out_dir(root).glob(f"{sid}_p{i}*.png")),
+            })
+    return picks
+
+
+def export_page_images(root: Path, pdf_path: Path,
+                       entries: list[dict[str, Any]] | None = None,
+                       force_copy: bool = False, dpi: int = 200) -> dict[str, Any]:
+    """把一册 PDF 的每页图按「真实 PDF 页码」另存一份。
+
+    文件名：``001_S001_p1.png``、``002_S002_p1_pdfrender.png`` …
+    前三位是 PDF 物理页码，后面保留节号/节内页码，便于反查。
+
+    entries 为空时读取 PDF 推断：优先按 page-plan 顺序逐页比对汇编时的 JPEG
+    指纹，匹配上就链接源 PNG；矢量页/无法匹配的页按 dpi 渲染成 PNG（加
+    ``_pdfrender`` 后缀）。builder 内部则直接传入 entries，零猜测。
+    """
+    import fitz
+    root = Path(root)
+    pdf_path = _resolve(root, pdf_path)
+    if not pdf_path.is_file():
+        raise FileNotFoundError(pdf_path)
+    dst_dir = page_images_dir(root, pdf_path)
+    dst_dir.mkdir(parents=True, exist_ok=True)
+
+    if entries is None:
+        picks = _expected_picks(root)
+        doc = fitz.open(pdf_path)
+        try:
+            positions = len(picks) == doc.page_count
+            all_fp: dict[str, Path] | None = None
+            entries = []
+            for idx in range(doc.page_count):
+                page_no = idx + 1
+                page = doc[idx]
+                pick = picks[idx] if positions else None
+                info = page.get_image_info(xrefs=True)
+                source: Path | None = None
+                embedded_sha = ""
+                if len(info) == 1:
+                    embedded = doc.extract_image(info[0]["xref"])["image"]
+                    embedded_sha = hashlib.sha256(embedded).hexdigest()
+                    if pick is not None:
+                        groups = [pick["candidates"]]
+                    else:
+                        if all_fp is None:
+                            all_fp = {}
+                            for f in sorted(out_dir(root).glob("*.png")):
+                                all_fp.setdefault(_jpeg_sha256(f), f)
+                        groups = [[all_fp[embedded_sha]]] if embedded_sha in all_fp else []
+                    for group in groups:
+                        for cand in sorted(group, key=lambda p: p.stat().st_size, reverse=True):
+                            if _jpeg_sha256(cand) == embedded_sha:
+                                source = cand
+                                break
+                        if source:
+                            break
+                if pick:
+                    sid, sp = pick["sid"], pick["section_page"]
+                elif source:
+                    m = re.match(r"^([A-Za-z0-9_-]+?)_p(\d+)", source.name)
+                    sid, sp = (m.group(1), int(m.group(2))) if m else ("", page_no)
+                else:
+                    sid, sp = "", page_no
+                entries.append({
+                    "pdf_page": page_no, "sid": sid, "section_page": sp,
+                    "source": str(source) if source else None,
+                    "source_kind": "generated" if source else "pdf-render",
+                    "embedded_sha256": embedded_sha,
+                })
+        finally:
+            doc.close()
+    else:
+        entries = [dict(e) for e in entries]
+
+    manifest_pages = []
+    render_doc = None
+    try:
+        for e in entries:
+            page_no = int(e["pdf_page"])
+            sid = str(e.get("sid") or "")
+            sp = e.get("section_page")
+            trace = f"_{sid}_p{sp}" if sid and sp else ""
+            if e.get("source"):
+                src = _resolve(root, e["source"])
+                if not src.is_file():
+                    raise FileNotFoundError(src)
+                name = f"{page_no:03d}{trace}{src.suffix or '.png'}"
+                method = _link_or_copy(src, dst_dir / name, force_copy=force_copy)
+                kind = e.get("source_kind", "generated")
+                source_rel = _rel(root, src)
+                size = src.stat().st_size
+            else:
+                name = f"{page_no:03d}{trace}_pdfrender.png"
+                if render_doc is None:
+                    render_doc = fitz.open(pdf_path)
+                pix = render_doc[page_no - 1].get_pixmap(dpi=dpi, alpha=False)
+                (dst_dir / name).write_bytes(pix.tobytes("png"))
+                method = "rendered"
+                kind = "pdf-render"
+                source_rel = ""
+                size = (dst_dir / name).stat().st_size
+            manifest_pages.append({
+                "pdf_page": page_no, "sid": sid, "section_page": sp,
+                "file": name, "source": source_rel, "source_kind": kind,
+                "storage": method, "bytes": size,
+                "embedded_sha256": e.get("embedded_sha256", ""),
+            })
+    finally:
+        if render_doc is not None:
+            render_doc.close()
+
+    keep = {m["file"] for m in manifest_pages}
+    for f in dst_dir.iterdir():
+        if f.is_file() and re.fullmatch(r"\d{3}_.*\.(png|jpe?g)", f.name) and f.name not in keep:
+            f.unlink()
+
+    doc_out = {
+        "schema": "bidviz-page-images/1",
+        "pdf": _rel(root, pdf_path),
+        "pdf_pages": len(manifest_pages),
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "pages": manifest_pages,
+    }
+    (dst_dir / "index.json").write_text(
+        json.dumps(doc_out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    with (dst_dir / "index.csv").open("w", encoding="utf-8-sig", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["pdf_page", "sid", "section_page", "file", "source",
+                    "source_kind", "storage", "bytes"])
+        for m in manifest_pages:
+            w.writerow([m["pdf_page"], m["sid"], m["section_page"], m["file"],
+                        m["source"], m["source_kind"], m["storage"], m["bytes"]])
+    return {
+        "dir": dst_dir, "pages": len(manifest_pages),
+        "generated": sum(1 for m in manifest_pages if m["source_kind"] == "generated"),
+        "rendered": sum(1 for m in manifest_pages if m["source_kind"] == "pdf-render"),
+        "manifest": dst_dir / "index.json",
+    }
+
+
 # ---------------------------------------------------------------- 汇编（整图页 + 隐藏层）
 
 
 def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
-                        image_resolver=None, draft: bool = False) -> Path:
+                        image_resolver=None, draft: bool = False,
+                        export_pages: bool = True, export_copy: bool = False) -> Path:
     """整图页（等比无损置入）+ 矢量全局页码 + 隐藏层原文 → A3 竖版 PDF。
 
     页码方案（2026-10-17 拍板）：AI 图内禁止画页码；汇编时在页面底部 24pt 白边
@@ -466,6 +708,7 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
     footer_h = 24.0                     # 底部页码白边高（图不进入此带）
     n_pages = 0
     global_no = 0
+    page_entries: list[dict[str, Any]] = []
     for sid in sids:
         pages = split_pages(_section_blocks(root, sid))
         for i, page_blocks in enumerate(pages, 1):
@@ -481,6 +724,10 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
                     continue
                 img = max(cands, key=lambda p: p.stat().st_size)
             global_no += 1
+            page_entries.append({
+                "pdf_page": n_pages + 1, "sid": sid, "section_page": i,
+                "source": str(img), "source_kind": "generated",
+            })
             # 方案 A1：等比包含（contain），图完整放入标题区…页脚带之间
             sheet.image(img, 0, 0, sheet.w, sheet.h - footer_h, dpi=200, fit="contain")
             # 矢量全局页码：底部白带居中「— N —」
@@ -504,6 +751,14 @@ def build_fullimage_pdf(root: Path, sids: list[str], out_pdf: Path,
             n_pages += 1
     sheet.c.save()
     print(f"[OK] fullimage 汇编：{n_pages} 页（全局页码 1..{global_no}）→ {out_pdf}")
+    if export_pages:
+        try:
+            summary = export_page_images(root, out_pdf, entries=page_entries,
+                                         force_copy=export_copy)
+            print(f"[OK] 页码图已导出：{summary['dir']}（{summary['pages']} 张，"
+                  f"真实页码 001–{summary['pages']:03d}）")
+        except Exception as exc:       # 导出失败不阻断 PDF 产物
+            print(f"[WARN] 页码图导出失败：{exc}")
     return out_pdf
 
 
@@ -521,13 +776,35 @@ def main(argv: list[str] | None = None) -> int:
                     help="每页变体数（多次调用实现；yoshub 实测不支持 n>1）")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--pdf", action="store_true")
+    ap.add_argument("--pdf", action="store_true",
+                    help="已停用：正式汇编请运行 bidviz build <项目> --engine fullimage")
+    ap.add_argument("--export-pages", action="store_true",
+                    help="不生成，只把现有 PDF 按真实页码导出页图（001_Sxxx_pN.png …）")
+    ap.add_argument("--pdf-path", default=None, help="配合 --export-pages 指定 PDF")
+    ap.add_argument("--copy-page-images", action="store_true",
+                    help="页码图用复制而非硬链接（默认硬链接，不额外占盘）")
+    ap.add_argument("--no-export-pages", action="store_true",
+                    help="汇编时跳过页码图导出")
     args = ap.parse_args(argv)
 
     root = Path(args.root)
     if not root.is_absolute():
         root = (BASE / root).resolve()
     _load(root)
+
+    if args.export_pages:
+        pdf = Path(args.pdf_path) if args.pdf_path else (
+            root / "output" / "施工组织设计-图册-A3-fullimage.pdf")
+        summary = export_page_images(root, pdf, force_copy=args.copy_page_images)
+        print(f"[OK] 页码图：{summary['dir']}")
+        print(f"     共 {summary['pages']} 张（源图 {summary['generated']}，"
+              f"PDF 渲染 {summary['rendered']}）；清单 {summary['manifest']}")
+        return 0
+
+    if args.pdf:
+        raise SystemExit(
+            "模块直调 --pdf 已停用，避免绕过 published/stale 门禁；"
+            "请运行 bidviz build <项目> --engine fullimage，或加 --draft 生成审阅版。")
 
     if args.section:
         sids = [s.strip().upper() for s in args.section.split(",")]
@@ -554,9 +831,6 @@ def main(argv: list[str] | None = None) -> int:
           f"image tokens ≈ {len(ok) * 1650}（实测均值 1650/张）")
     print(f"耗时 {time.time() - t0:.0f}s；台账 {out_dir(root) / LEDGER_NAME}")
 
-    if args.pdf:
-        out = root / "output" / "施工组织设计-图册-A3-fullimage.pdf"
-        build_fullimage_pdf(root, sids, out)
     return 0
 
 

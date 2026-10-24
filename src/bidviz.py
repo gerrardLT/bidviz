@@ -540,7 +540,8 @@ class ImageAPI:
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             method="POST",
         )
-        data = self._request_json(req, 240, "生图 API")
+        timeout = int(os.getenv("BIDVIZ_IMAGE_TIMEOUT", "240"))
+        data = self._request_json(req, timeout, "生图 API")
         return self._write_response(data, output, recorder)
 
     def edit(self, prompt: str, image: Path, mask: Path, output: Path,

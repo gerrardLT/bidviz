@@ -17,6 +17,8 @@ dependencies = [
 [project.optional-dependencies]
 # Word COM 转换需要 Windows + 装了 Office
 windows = ["pywin32>=306"]
+# HTML 混合引擎：Playwright + Chromium（本机已缓存浏览器时可复用）
+html = ["playwright==1.55.0"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
@@ -27,8 +29,10 @@ package-dir = {"" = "src"}
 py-modules = [
     "audit_layout", "bidviz", "bidviz_album", "bidviz_charts", "bidviz_classify",
     "bidviz_cli", "bidviz_config", "bidviz_e1", "bidviz_fullimage", "bidviz_fullimage_audit",
-    "bidviz_fullimage_store", "bidviz_ingest_tables", "bidviz_issues", "bidviz_layout",
-    "bidviz_local_edit", "bidviz_plan", "bidviz_templates", "bidviz_v2", "bidviz_vector",
+    "bidviz_fullimage_compact", "bidviz_fullimage_store", "bidviz_html",
+    "bidviz_ingest_tables", "bidviz_issues",
+    "bidviz_layout", "bidviz_local_edit", "bidviz_memory", "bidviz_plan", "bidviz_templates",
+    "bidviz_v2", "bidviz_vector",
     "build_e1", "build_sample_s003", "build_v13", "generate_chapter", "run_pipeline",
 ]
 # 约定：新增 src/*.py 模块必须同步加入上方清单（editable install 依赖它；

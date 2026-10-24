@@ -217,17 +217,17 @@ def _cut_two(s: str, idx: int, min_left: int = 2, max_left: int = 22) -> tuple[s
     return left, right
 
 
-def _row_risk(s: str) -> list[str]:
+def _row_risk(s: str, cell_max: int = _CELL_MAX) -> list[str]:
     m = _TRIG_RE.search(s)
     if m and m.start() >= 4:
         left, right = s[:m.start()].strip(_SEP), s[m.start():].strip(_SEP)
         if left and right:
-            return [left, right[:_CELL_MAX]]
+            return [left, right[:cell_max]]
     left, right = _cut_two(s, min(18, len(s)))
-    return [left, right[:_CELL_MAX]]
+    return [left, right[:cell_max]]
 
 
-def _row_param(s: str) -> list[str]:
+def _row_param(s: str, cell_max: int = _CELL_MAX) -> list[str]:
     """参数行：左列=数值前的主语短语，右列=原文全句（不截断、不砍词）。"""
     import bidviz_e1 as e1
     m = e1.PARAM_RE.search(s)
@@ -239,19 +239,19 @@ def _row_param(s: str) -> list[str]:
         left = left[-18:]
     if not left:
         left = s[max(0, m.start() - 10):m.start()].strip(_SEP)
-    return [left, s[:_CELL_MAX]]
+    return [left, s[:cell_max]]
 
 
-def _row_proc(s: str, n: int = 0) -> list[str]:
+def _row_proc(s: str, n: int = 0, cell_max: int = _CELL_MAX) -> list[str]:
     m = _ORD_RE.match(s)
     head = m.group(0).strip() if m else ""
     rest = s[m.end():] if m else s
     left, right = _cut_two(rest, min(16, len(rest)))
     stage = ((head + " " + left) if left else (head or (str(n) if n else ""))).strip(_SEP)
-    return [stage, right[:_CELL_MAX]]
+    return [stage, right[:cell_max]]
 
 
-def curate_tables(item: Any) -> list[tuple[str, list[str], list[list[str]], list[float]]]:
+def curate_tables(item: Any, cell_max: int = _CELL_MAX) -> list[tuple[str, list[str], list[list[str]], list[float]]]:
     """把本节原文策展为报表：一句只归一类（风险>参数>工序），材料只留真名词。
 
     返回 (题注, 表头, 行, 列宽比例)；所有单元格文字逐字取自原文。
@@ -271,21 +271,28 @@ def curate_tables(item: Any) -> list[tuple[str, list[str], list[list[str]], list
                 continue
             if e1.RISK_RE.search(s):
                 seen.add(k)
-                risk.append(_row_risk(s))
+                risk.append(_row_risk(s, cell_max))
             elif e1.PARAM_RE.search(s):
                 seen.add(k)
-                param.append(_row_param(s))
+                param.append(_row_param(s, cell_max))
             elif any(w in s for w in e1.STEP_WORDS):
                 seen.add(k)
-                proc.append(_row_proc(s, len(proc) + 1))
+                proc.append(_row_proc(s, len(proc) + 1, cell_max))
     out: list[tuple[str, list[str], list[list[str]], list[float]]] = []
     # 要点式摘要：每表限行数，保证一节内容尽量一页装下
     if proc:
-        out.append(("施工工序", ["阶段 / 工序", "作业要点（逐字取自原文）"], proc[:6], [0.30, 0.70]))
+        rows = []
+        for i, row in enumerate(proc[:6], 1):
+            cells = list(row)
+            if cells:
+                label = _ORD_RE.sub("", str(cells[0])).strip()
+                cells[0] = f"{i}. {label}" if label else str(i)
+            rows.append(cells)
+        out.append(("施工工序", ["阶段 / 工序", "作业要点"], rows, [0.30, 0.70]))
     if param:
-        out.append(("参数与指标", ["名称 / 部位", "指标 · 要求（逐字取自原文）"], param[:6], [0.30, 0.70]))
+        out.append(("参数与指标", ["名称 / 部位", "指标 · 要求"], param[:6], [0.30, 0.70]))
     if risk:
-        out.append(("风险与控制要求", ["风险情形", "控制要求（逐字取自原文）"], risk[:6], [0.34, 0.66]))
+        out.append(("风险与控制要求", ["风险情形", "控制要求"], risk[:6], [0.34, 0.66]))
     try:
         mats = bc.extract_materials(getattr(item, "blocks", []))
     except Exception:
@@ -409,7 +416,7 @@ def _absorb_lines(f: Features, kind_key: str) -> list[str]:
     """按图型挑选要吸收进画面的原文事实（逐字，不改写）。"""
     lines: list[str] = []
     if f.objects:
-        lines.append("【画面主体（构件/部位/工序名，逐字取自原文）】" + "、".join(f.objects[:14]))
+        lines.append("【画面主体（构件/部位/工序名）】" + "、".join(f.objects[:14]))
     if kind_key in ("hero_scene", "process_flow", "progress", "assembly"):
         if f.steps:
             lines.append("【按施工先后表现的工序】")

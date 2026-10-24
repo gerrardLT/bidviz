@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import tomllib
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -55,6 +56,25 @@ DEFAULTS: dict = {
         # 2 = { provider = "taomu",   model = "gpt-image-2.5",      size = "1536x1024" }
         "figure_overrides": {},
     },
+    "layout": {
+        # legacy | v13 | fullimage | html
+        "engine": "legacy",
+    },
+    "html": {
+        # auto = 自动探测 Chrome/Edge；也可写可执行文件的绝对路径。
+        "browser": "auto",
+        "dpi": 200,          # 可选 PNG 页图的渲染分辨率
+        "emit_png": False,   # build 时是否同时导出页图
+        "table_cell_max": 400,  # HTML 表格单元格最大字数（v13/legacy 仍用 70）
+    },
+    "compact": {
+        # 页数目标是项目级要求：不同项目按招标文件设置；0 = 不限制。
+        "min_pages": 0,
+        "max_pages": 0,
+        # 目标未限制时，按每页字数/每页小节数排版。
+        "max_chars_per_page": 2000,
+        "max_sections_per_page": 2,
+    },
     "plan": {
         # 每节最多画几张图。张数由内容体量与维度决定，不是固定槽位。
         "max_figures": 2,
@@ -89,6 +109,13 @@ DEFAULTS: dict = {
         "min_chars": 220,
     },
 }
+
+
+# ---------------------------------------------------------------- 引擎
+
+SUPPORTED_ENGINES = ("legacy", "v13", "fullimage", "html")
+_ENGINE_ALIASES = {"hybrid": "html"}
+_warned_engines: set[str] = set()
 
 
 # ---------------------------------------------------------------- 工具
@@ -243,7 +270,61 @@ class Config:
     # -- layout（V1.3 阶段 3.6：新旧体系切换；legacy 保留至阶段 7 验收后移除） --
     @property
     def layout_engine(self) -> str:
-        return str(self.raw.get("layout", {}).get("engine", "legacy")).strip().lower()
+        raw = str(self.raw.get("layout", {}).get("engine", "legacy")).strip().lower()
+        engine = _ENGINE_ALIASES.get(raw, raw)
+        if engine not in SUPPORTED_ENGINES:
+            if raw not in _warned_engines:
+                _warned_engines.add(raw)
+                warnings.warn(f"未知 layout.engine={raw!r}，按 legacy 处理",
+                              RuntimeWarning, stacklevel=2)
+            return "legacy"
+        return engine
+
+    @property
+    def supported_engines(self) -> tuple[str, ...]:
+        return SUPPORTED_ENGINES
+
+    # -- html（AI 局部插图 + HTML/CSS 排版） --
+    @property
+    def html_browser(self) -> str:
+        return _env("BIDVIZ_BROWSER") or str(
+            self.raw.get("html", {}).get("browser", "auto") or "auto").strip()
+
+    @property
+    def html_dpi(self) -> int:
+        return int(_env("BIDVIZ_HTML_DPI") or self.raw.get("html", {}).get("dpi", 200))
+
+    @property
+    def html_table_cell_max(self) -> int:
+        return max(40, int(self.raw.get("html", {}).get("table_cell_max", 400)))
+
+    # -- compact（AI 生图压缩版） --
+    @property
+    def compact(self) -> dict:
+        return self.raw.get("compact", {}) or {}
+
+    @property
+    def compact_min_pages(self) -> int:
+        return max(0, int(self.compact.get("min_pages", 0)))
+
+    @property
+    def compact_max_pages(self) -> int:
+        return max(0, int(self.compact.get("max_pages", 0)))
+
+    @property
+    def compact_max_chars(self) -> int:
+        return max(400, int(self.compact.get("max_chars_per_page", 2000)))
+
+    @property
+    def compact_max_sections(self) -> int:
+        return max(1, int(self.compact.get("max_sections_per_page", 2)))
+
+    @property
+    def html_emit_png(self) -> bool:
+        value = self.raw.get("html", {}).get("emit_png", False)
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)
 
 
 # ---------------------------------------------------------------- 加载

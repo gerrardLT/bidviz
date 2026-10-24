@@ -24,7 +24,6 @@ sys.path.insert(0, str(BASE / "src"))
 
 import bidviz_templates as tpl
 import bidviz_vector as bv
-from bidviz_templates import (Callout, FigureSlot, KPI, PagePlan, ProseBlock)
 from bidviz_vector import Sheet
 
 MM = bv.MM
@@ -33,42 +32,6 @@ MM = bv.MM
 bv.set_page("A3", "portrait")
 
 MAX_PAGES = 3          # D4：每节 ≤3 页
-
-
-def _page_plan_from_dict(raw: dict, root: Path, page_no: int, total_pages: int) -> PagePlan:
-    kpis = [KPI(**k) for k in raw.get("kpis", [])]
-    fig_raw = raw.get("figure")
-    figure = None
-    if fig_raw:
-        img = fig_raw.get("image")
-        img_path = (root / img) if img else None
-        callouts = [Callout(no=str(c["no"]), text=c.get("text", ""),
-                            anchor=tuple(c.get("anchor", (0.5, 0.5))))
-                    for c in fig_raw.get("callouts", [])]
-        figure = FigureSlot(image=img_path, callouts=callouts,
-                            caption=fig_raw.get("caption", ""),
-                            text_spec=fig_raw.get("text_spec", []),
-                            fit=fig_raw.get("fit", "contain"),
-                            crop_top=float(fig_raw.get("crop_top", 0.0)),
-                            cover_anchor=tuple(fig_raw.get("cover_anchor", (0.5, 0.5))))
-    prose = [ProseBlock(text=p["text"], kind=p.get("kind", "body"))
-             for p in raw.get("prose", [])]
-    it = raw.get("icon_table", {})
-    return PagePlan(
-        chapter=raw.get("title", {}).get("chapter", ""),
-        section=raw.get("title", {}).get("section", ""),
-        page_no=page_no,
-        total_pages=total_pages,
-        template_id=raw.get("template_id", "T-B1"),
-        kpis=kpis,
-        figure=figure,
-        prose=prose,
-        icon_table_headers=it.get("headers", []),
-        icon_table_rows=it.get("rows", []),
-        tables=raw.get("tables", []),
-        vector=raw.get("vector"),
-        footer_note=raw.get("footer_note", ""),
-    )
 
 
 def _remaining_tables(page_raw: dict, tk: dict, content_w: float) -> list[dict]:
@@ -113,7 +76,7 @@ def _count_pages(root: Path, out_pdf: Path, pp: dict, sids: list[str], tk: dict)
             continue
         n = 1
         page1 = pages_raw[0]
-        plan1 = _page_plan_from_dict(page1, root, 1, 1)
+        plan1 = tpl.page_plan_from_dict(page1, root, 1, 1)
         tpl.compose_page(sheet, tk, plan1, template=page1.get("template_id", "T-B1"))
         sheet.c.showPage()
         rest = _remaining_tables(page1, tk, sheet.w)
@@ -123,7 +86,7 @@ def _count_pages(root: Path, out_pdf: Path, pp: dict, sids: list[str], tk: dict)
         page_no = 1
         while rest and page_no < MAX_PAGES:
             page_no += 1
-            plan_c = _page_plan_from_dict(page1, root, page_no, 1)
+            plan_c = tpl.page_plan_from_dict(page1, root, page_no, 1)
             plan_c.kpis, plan_c.figure, plan_c.vector, plan_c.prose = [], None, None, []
             rest = tpl.compose_content_page(sheet, tk, plan_c, rest)
             sheet.c.showPage()
@@ -150,7 +113,7 @@ def _render(root: Path, out_pdf: Path, pp: dict, sids: list[str], tk: dict,
 
         # ---- 首页 ----
         total = counts.get(sid, 1)
-        plan1 = _page_plan_from_dict(page1, root, 1, total)
+        plan1 = tpl.page_plan_from_dict(page1, root, 1, total)
         tpl.compose_page(sheet, tk, plan1, template=page1.get("template_id", "T-B1"))
         sheet.c.showPage()
         n_pages += 1
@@ -165,7 +128,7 @@ def _render(root: Path, out_pdf: Path, pp: dict, sids: list[str], tk: dict,
         page_no = 1
         while rest and page_no < MAX_PAGES:
             page_no += 1
-            plan_c = _page_plan_from_dict(page1, root, page_no, total)
+            plan_c = tpl.page_plan_from_dict(page1, root, page_no, total)
             plan_c.kpis = []                      # 续页不再放 KPI
             plan_c.figure = None
             plan_c.vector = None

@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -98,6 +99,75 @@ class PagePlan:
     tables: list[dict] = field(default_factory=list)     # [{caption,headers,rows,col_ratios}]
     vector: dict | None = None                           # {kind, ...}（timeline/org/chevron）
     footer_note: str = ""
+
+
+_DISPLAY_TRACE_RE = re.compile(r"[（(]\s*逐字取自原文\s*[）)]|逐字取自原文")
+_SEQ_PREFIX_RE = re.compile(r"^\s*(?:\d{1,3}|[①-⑩]|[一二三四五六七八九十]+)\s*[、.．)）]?\s*")
+
+
+def _clean_display(value: Any) -> str:
+    text = str(value or "")
+    text = _DISPLAY_TRACE_RE.sub("", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _clean_table_dict(table: dict) -> dict:
+    """成品表格只保留内容：去掉编辑说明，序列列重排 1..N。"""
+    out = dict(table)
+    out["caption"] = _clean_display(out.get("caption", ""))
+    headers = [_clean_display(x) for x in (out.get("headers") or [])]
+    out["headers"] = headers
+    seq = bool(headers) and any(k in headers[0] for k in
+                                ("序号", "阶段", "工序", "步骤", "环节"))
+    rows = []
+    for i, row in enumerate(out.get("rows") or [], 1):
+        cells = [_clean_display(x) for x in row]
+        if seq and cells:
+            label = _SEQ_PREFIX_RE.sub("", cells[0]).strip()
+            cells[0] = f"{i}. {label}" if label else str(i)
+        if not seq and cells and len(cells[0]) < 2:
+            continue
+        rows.append(cells)
+    out["rows"] = rows
+    return out
+
+
+def page_plan_from_dict(raw: dict, root: Path, page_no: int = 1,
+                        total_pages: int = 1) -> PagePlan:
+    """page-plan.json 的页对象 → PagePlan；v13 与 html 引擎共用同一口径。"""
+    kpis = [KPI(**k) for k in raw.get("kpis", [])]
+    fig_raw = raw.get("figure")
+    figure = None
+    if fig_raw:
+        img = fig_raw.get("image")
+        img_path = (Path(root) / img) if img else None
+        callouts = [Callout(no=str(c["no"]), text=c.get("text", ""),
+                            anchor=tuple(c.get("anchor", (0.5, 0.5))))
+                    for c in fig_raw.get("callouts", [])]
+        figure = FigureSlot(image=img_path, callouts=callouts,
+                            caption=_clean_display(fig_raw.get("caption", "")),
+                            text_spec=fig_raw.get("text_spec", []),
+                            fit=fig_raw.get("fit", "contain"),
+                            crop_top=float(fig_raw.get("crop_top", 0.0)),
+                            cover_anchor=tuple(fig_raw.get("cover_anchor", (0.5, 0.5))))
+    prose = [ProseBlock(text=_clean_display(p["text"]), kind=p.get("kind", "body"))
+             for p in raw.get("prose", [])]
+    it = raw.get("icon_table", {})
+    return PagePlan(
+        chapter=raw.get("title", {}).get("chapter", ""),
+        section=raw.get("title", {}).get("section", ""),
+        page_no=page_no,
+        total_pages=total_pages,
+        template_id=raw.get("template_id", "T-B1"),
+        kpis=kpis,
+        figure=figure,
+        prose=prose,
+        icon_table_headers=[_clean_display(x) for x in it.get("headers", [])],
+        icon_table_rows=[[_clean_display(x) for x in row] for row in it.get("rows", [])],
+        tables=[_clean_table_dict(t) for t in raw.get("tables", [])],
+        vector=raw.get("vector"),
+        footer_note=raw.get("footer_note", ""),
+    )
 
 
 # ---------------------------------------------------------------- 组件实现
