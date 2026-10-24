@@ -1139,16 +1139,21 @@ async function reloadKeepScroll() {
 
 async function startPoll() {
   if (polling) return;
-  try { lastMsg = (await api('/api/status')).msg || ''; } catch (e) { lastMsg = ''; }
+  let sawRunning = false;
+  try {
+    const st0 = await api('/api/status');
+    lastMsg = st0.msg || ''; sawRunning = !!st0.running;
+  } catch (e) { lastMsg = ''; }
   polling = setInterval(async () => {
     try {
       const st = await api('/api/status');
-      $('#statustxt').textContent = st.running ? (st.msg || '处理中…') : '就绪';
+      $('#statustxt').textContent = st.running ? (st.msg || '处理中…') : (st.msg || '就绪');
       $('#dot').classList.toggle('on', !!st.running);
-      if (!st.running && st.msg && st.msg !== lastMsg && /完成|失败/.test(st.msg)) {
-        lastMsg = st.msg;
+      if (st.running) { sawRunning = true; return; }
+      // 见过 running=true 之后变回 false，即任务结束——不依赖消息文案匹配
+      if (sawRunning) {
         clearInterval(polling); polling = null;
-        $('#statustxt').textContent = st.msg;
+        if (st.msg) lastMsg = st.msg;
         await reloadKeepScroll();
       }
     } catch (e) { clearInterval(polling); polling = null; }

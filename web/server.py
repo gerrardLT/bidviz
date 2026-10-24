@@ -64,6 +64,22 @@ def _page_lock(sid: str, page_no: int) -> threading.Lock:
         return _PAGE_LOCKS.setdefault(key, threading.Lock())
 
 
+# 全局长任务互斥：rebuild / replan / illustrations 会重排或重写共享文件，
+# 同一时刻只允许一个；非阻塞获取失败 → 409。锁由任务线程结束时释放。
+_TASK_LOCK = threading.Lock()
+# edits.json / figure-plan.json 的读-改-写串行化，防止跨请求丢失更新
+_EDITS_LOCK = threading.Lock()
+_PLAN_LOCK = threading.Lock()
+
+
+def _run_exclusive(fn, *args, **kwargs):
+    """在后台线程里执行互斥任务，无论成败都释放 _TASK_LOCK。"""
+    try:
+        fn(*args, **kwargs)
+    finally:
+        _TASK_LOCK.release()
+
+
 def _image_dirs() -> list[Path]:
     """主视觉目录候选，由项目配置决定优先级。"""
     return _cfg().image_dirs
@@ -174,17 +190,44 @@ def _artifact(path: Path) -> dict:
         return {"path": str(path), "hash_error": str(exc)[:160]}
 
 
+_MEM_FINGERPRINTS: dict[Path, tuple] = {}
+_MEM_LOCK = threading.Lock()
+
+
+def _memory_fingerprint(memory_root: Path) -> tuple:
+    """记录目录的 mtime/size 指纹：未变化则跳过 FTS 索引全量重建。"""
+    entries = []
+    for dirpath, _dirs, files in os.walk(memory_root):
+        for name in files:
+            if name.endswith(".toml"):
+                full = Path(dirpath) / name
+                try:
+                    st = full.stat()
+                except OSError:
+                    continue
+                entries.append((str(full.relative_to(memory_root)).replace("\\", "/"),
+                                st.st_mtime_ns, st.st_size))
+    return tuple(sorted(entries))
+
+
 def _memory_records(query: str = "", *, scope: dict | None = None,
                     include_inactive: bool = False, statuses=None, limit: int = 50) -> list[dict]:
     out = []
-    for memory_root in _memory_roots():
-        if not memory_root.exists():
-            continue
-        suffix = "global" if memory_root == BASE / "memory" else "project"
-        out.extend(memory.search_records(
-            memory_root, query, scope=scope, include_inactive=include_inactive,
-            statuses=statuses, limit=limit, refresh_index=True,
-            index_path=ROOT / "work" / f"memory-index-{suffix}.sqlite3"))
+    # 重建与查询串行：避免两个请求并发 os.replace 同一个 sqlite 索引（Windows PermissionError）
+    with _MEM_LOCK:
+        for memory_root in _memory_roots():
+            if not memory_root.exists():
+                continue
+            suffix = "global" if memory_root == BASE / "memory" else "project"
+            index = ROOT / "work" / f"memory-index-{suffix}.sqlite3"
+            fp = _memory_fingerprint(memory_root)
+            refresh = fp != _MEM_FINGERPRINTS.get(memory_root) or not index.exists()
+            out.extend(memory.search_records(
+                memory_root, query, scope=scope, include_inactive=include_inactive,
+                statuses=statuses, limit=limit, refresh_index=refresh,
+                index_path=index))
+            if refresh:
+                _MEM_FINGERPRINTS[memory_root] = fp
     out.sort(key=lambda item: (-float(item.get("score", 0)), item["id"]))
     return out[:limit]
 
@@ -241,13 +284,21 @@ def load_edits() -> dict:
         try:
             return json.loads(EDITS.read_text(encoding="utf-8"))
         except Exception:
+            # 损坏不再静默清空：留档 .corrupt-* 供人工恢复，界面按空编辑起步
+            backup = EDITS.with_name(EDITS.name + f".corrupt-{time.strftime('%Y%m%d-%H%M%S')}")
+            try:
+                shutil.copy2(EDITS, backup)
+                EDITS.unlink(missing_ok=True)
+            except OSError:
+                pass
+            print(f"[WARN] edits.json 损坏，已备份到 {backup.name}", flush=True)
             return {}
     return {}
 
 
 def save_edits(d: dict) -> None:
-    EDITS.parent.mkdir(parents=True, exist_ok=True)
-    EDITS.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    import bidviz_ioutil
+    bidviz_ioutil.atomic_write_json(EDITS, d)
 
 
 def facts_of(vis) -> dict:
@@ -385,7 +436,9 @@ def doc_payload() -> dict:
     edits = load_edits()
     mode = current_engine()
     if mode in ("legacy", "html") and plan.load_plan(ROOT) is None:
-        plan.ensure_plan(ROOT)
+        with _PLAN_LOCK:
+            if plan.load_plan(ROOT) is None:
+                plan.ensure_plan(ROOT)
     out = []
     expected = []
     for cname, ids in chapters.items():
@@ -427,18 +480,19 @@ def doc_payload() -> dict:
 
 def save_prompts(sid: str, prompts: dict) -> int:
     """把网页上改过的提示词写回 figure-plan.json 并标 custom，重算时不被覆盖。"""
-    p = plan.load_plan(ROOT)
-    entry = ((p or {}).get("sections") or {}).get(sid)
-    if not entry:
-        return 0
-    n = 0
-    for f in entry.get("figures", []):
-        txt = prompts.get(str(f.get("no")))
-        if isinstance(txt, str) and txt.strip() and txt.strip() != str(f.get("prompt", "")).strip():
-            f["prompt"], f["custom"] = txt.strip(), True
-            n += 1
-    if n:
-        plan.save_plan(ROOT, p)
+    with _PLAN_LOCK:
+        p = plan.load_plan(ROOT)
+        entry = ((p or {}).get("sections") or {}).get(sid)
+        if not entry:
+            return 0
+        n = 0
+        for f in entry.get("figures", []):
+            txt = prompts.get(str(f.get("no")))
+            if isinstance(txt, str) and txt.strip() and txt.strip() != str(f.get("prompt", "")).strip():
+                f["prompt"], f["custom"] = txt.strip(), True
+                n += 1
+        if n:
+            plan.save_plan(ROOT, p)
     return n
 
 
@@ -475,11 +529,16 @@ def do_regen(sid: str, no: int = 1) -> None:
         rec.update({"ok": False, "attempts": 1, "sec": round(time.time() - t0, 1),
                     "error": str(exc)[:200]})
         msg = f"{sid} 图{no} 失败: {str(exc)[:160]}"
-    led = gc.load_ledger(ROOT)
-    led[f"{sid}#{no}"] = rec
-    gc.save_ledger(ROOT, led)
-    with _lock:
-        _state.update(msg=msg, running=False)
+    finally:
+        # 台账写入与状态复位必须在 finally：写失败也不允许永久卡「处理中」
+        try:
+            led = gc.load_ledger(ROOT)
+            led[f"{sid}#{no}"] = rec
+            gc.save_ledger(ROOT, led)
+        except Exception:
+            traceback.print_exc()
+        with _lock:
+            _state.update(msg=msg, running=False)
 
 
 def _vision_ocr(path: Path) -> list[str] | None:
@@ -500,12 +559,12 @@ def _do_fullimage_generate(job_id: str, sid: str, page_no: int,
                            expected_source_hash: str, prompt: str) -> None:
     store = _require_store()
     run = _new_run("fullimage.generate", section=sid, page=page_no)
-    store.update_job(ROOT, job_id, run_id=run.run_id)
     _record(run, "generation.start", scope={"project": ROOT.name, "engine": "fullimage",
                "operation": "generate", "section": sid, "page": page_no},
                source_hash=expected_source_hash, prompt_hash=_hash_text(prompt))
     run_status = "error"
     try:
+        store.update_job(ROOT, job_id, run_id=run.run_id)
         _chapters, secs = _fullimage_sections()
         ctx = _fullimage_page_context(sid, page_no, secs)
         if ctx["source_hash"] != expected_source_hash:
@@ -607,7 +666,6 @@ def _do_fullimage_local_edit(job_id: str, sid: str, page_no: int,
                              box: list[float], text: str, note: str = "") -> None:
     store = _require_store()
     run = _new_run("fullimage.local-edit", section=sid, page=page_no)
-    store.update_job(ROOT, job_id, run_id=run.run_id)
     _record(run, "local-edit.start", scope={"project": ROOT.name, "engine": "fullimage",
                "operation": "local-edit", "section": sid, "page": page_no},
                source_hash=expected_source_hash, base_version=base_version,
@@ -615,6 +673,7 @@ def _do_fullimage_local_edit(job_id: str, sid: str, page_no: int,
     msg = ""
     run_status = "error"
     try:
+        store.update_job(ROOT, job_id, run_id=run.run_id)
         _chapters, secs = _fullimage_sections()
         ctx = _fullimage_page_context(sid, page_no, secs)
         if ctx["source_hash"] != expected_source_hash:
@@ -950,7 +1009,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._file(path, "image/png")
         if p == "/api/pdf":
             from urllib.parse import parse_qs
-            draft = bool(parse_qs(urlparse(self.path).query).get("draft"))
+            draft = any(v not in ("0", "false", "")
+                        for v in parse_qs(urlparse(self.path).query).get("draft", []))
             engine = current_engine()
             names = {
                 "fullimage": ("施工组织设计-图册-A3-fullimage-DRAFT.pdf"
@@ -1009,13 +1069,24 @@ class Handler(SimpleHTTPRequestHandler):
 
             if p == "/api/rebuild":
                 body = self._body()
-                threading.Thread(target=do_rebuild, args=(bool(body.get("draft")),), daemon=True).start()
+                if not _TASK_LOCK.acquire(blocking=False):
+                    return self._json({"error": "已有汇编/重规划任务在进行中，请稍候"}, 409)
+                with _lock:
+                    _state.update(running=True, msg="汇编 PDF …")
+                threading.Thread(target=_run_exclusive, args=(do_rebuild,),
+                                 kwargs={"draft": bool(body.get("draft"))},
+                                 daemon=True).start()
                 return self._json({"ok": True})
 
             if p == "/api/replan":
                 body = self._body()
-                threading.Thread(target=do_replan,
-                                 args=(body.get("section"), bool(body.get("force"))),
+                if not _TASK_LOCK.acquire(blocking=False):
+                    return self._json({"error": "已有汇编/重规划任务在进行中，请稍候"}, 409)
+                with _lock:
+                    _state.update(running=True, msg="重新分析内容并规划图位 …")
+                threading.Thread(target=_run_exclusive, args=(do_replan,),
+                                 kwargs={"section": body.get("section"),
+                                         "force": bool(body.get("force"))},
                                  daemon=True).start()
                 return self._json({"ok": True})
 
@@ -1025,8 +1096,13 @@ class Handler(SimpleHTTPRequestHandler):
 
             if p == "/api/illustrations/generate":
                 body = self._body()
-                threading.Thread(target=do_illustrations,
-                                 args=(body.get("section"), bool(body.get("force"))),
+                if not _TASK_LOCK.acquire(blocking=False):
+                    return self._json({"error": "已有汇编/重规划任务在进行中，请稍候"}, 409)
+                with _lock:
+                    _state.update(running=True, msg="生成 HTML 局部插图 …")
+                threading.Thread(target=_run_exclusive, args=(do_illustrations,),
+                                 kwargs={"section": body.get("section"),
+                                         "force": bool(body.get("force"))},
                                  daemon=True).start()
                 return self._json({"ok": True})
 
@@ -1126,21 +1202,22 @@ class Handler(SimpleHTTPRequestHandler):
                                      args=(sid, int(body.get("fig") or 1)), daemon=True).start()
                     return self._json({"ok": True})
 
-                edits = load_edits()
-                if action == "reset":
-                    edits.pop(sid, None)
-                    save_edits(edits)
-                    return self._json({"ok": True})
+                with _EDITS_LOCK:
+                    edits = load_edits()
+                    if action == "reset":
+                        edits.pop(sid, None)
+                        save_edits(edits)
+                        return self._json({"ok": True})
 
-                body = self._body()
-                fields = []
-                if "title" in body or "body" in body:
-                    cur = edits.setdefault(sid, {})
-                    for k in ("title", "body"):
-                        if k in body:
-                            cur[k] = body[k]
-                            fields.append(k)
-                    save_edits(edits)
+                    body = self._body()
+                    fields = []
+                    if "title" in body or "body" in body:
+                        cur = edits.setdefault(sid, {})
+                        for k in ("title", "body"):
+                            if k in body:
+                                cur[k] = body[k]
+                                fields.append(k)
+                        save_edits(edits)
                     run = _new_run("document.edit", section=sid)
                     _record(run, "document.edited", scope={"project": ROOT.name,
                                "engine": current_engine(), "operation": "edit", "section": sid},
