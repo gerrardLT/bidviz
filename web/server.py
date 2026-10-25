@@ -586,7 +586,8 @@ def _do_fullimage_generate(job_id: str, sid: str, page_no: int,
                                           section=ctx["section"].title,
                                           source_lines=[x[1] for x in ctx["page_blocks"]],
                                           ocr_texts=ocr,
-                                          reference_count=int(rec.get("reference_count", 1)))
+                                          reference_count=int(rec.get("reference_count", 1)),
+                                          is_cover=bool(ctx.get("cover")))
         status = "blocked" if audit["status"] == "block" else "review"
         metadata = {"sid": sid, "page": page_no, "version": version, "status": status,
                     "source_hash": ctx["source_hash"], "template_hash": ctx["template_hash"],

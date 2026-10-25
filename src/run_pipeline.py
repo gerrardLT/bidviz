@@ -235,7 +235,6 @@ def main():
     print("\n" + "=" * 70)
     print(f"🎉 全流程执行完毕！总耗时: {total_sec} 秒")
     print(f"📄 最终 PDF: {pdf_out}")
-    print(f"🌐 交互看板: {Path('full_album_viewer.html').resolve()}")
     print("=" * 70 + "\n")
 
 if __name__ == "__main__":

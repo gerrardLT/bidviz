@@ -121,6 +121,9 @@ def build(root: Path, out_pdf: Path, total_pages: int | None = None,
     """编译图册：每节 = 一页 AI 图 + 一页内容报表（工程报表式，无多余装饰）。"""
     from bidviz_config import load as _load_cfg, get as _cfg
     _load_cfg(root)
+    # 画布隔离：本体系按 A3 横版设计（e1 的常量在 import 时快照横版）。
+    # 同进程先跑过 fullimage/compact（竖版 set_page）会污染全局画布，这里显式切回。
+    bv.set_page("A3", "landscape")
     e1.apply_style()
     blocks, page_media = load_project(root)
     global_media = sorted(str(p) for p in (root / "work/page-media").glob("*.*"))

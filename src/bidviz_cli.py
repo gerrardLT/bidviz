@@ -98,7 +98,8 @@ def _run_evidence(root: Path, command: str, args) -> dict:
             names = {"legacy": "施工组织设计-图册-A3.pdf",
                      "v13": "施工组织设计-图册-A3-v13.pdf",
                      "fullimage": "施工组织设计-图册-A3-fullimage.pdf",
-                     "html": "施工组织设计-图册-A3-html.pdf"}
+                     "html": "施工组织设计-图册-A3-html.pdf",
+                     "compact": "施工组织设计-图册-A3-fullimage-50p.pdf"}
             paths += [Path(args.out) if getattr(args, "out", None) else cfg.output / names[engine]]
         elif command in {"audit", "issues"}:
             paths += list(cfg.output.glob("audit-*.json")) + [root / "work" / "issues.json"]
@@ -311,6 +312,17 @@ def cmd_generate(args) -> None:
             cmd.append("--dry-run")
         raise SystemExit(subprocess.run(cmd, cwd=BASE).returncode)
 
+    if engine == "compact":
+        cmd = [sys.executable, "-m", "bidviz_fullimage_compact", str(root),
+               "--plan", "--generate"]
+        if args.limit:
+            cmd += ["--limit", str(args.limit)]
+        if args.force:
+            cmd.append("--force")
+        if args.dry_run:
+            cmd.append("--dry-run")
+        raise SystemExit(subprocess.run(cmd, cwd=BASE).returncode)
+
     cmd = [sys.executable, str(BASE / "src" / "generate_chapter.py"), "--root", str(root)]
     if args.section:
         cmd += ["--section", args.section]
@@ -340,6 +352,7 @@ def cmd_build(args) -> None:
         "v13": "施工组织设计-图册-A3-v13.pdf",
         "fullimage": "施工组织设计-图册-A3-fullimage.pdf",
         "html": "施工组织设计-图册-A3-html.pdf",
+        "compact": "施工组织设计-图册-A3-fullimage-50p.pdf",
     }
     if args.out:
         out = Path(args.out)
@@ -357,6 +370,14 @@ def cmd_build(args) -> None:
         r = subprocess.run([sys.executable, str(BASE / "src" / "build_v13.py"),
                             "--root", str(root), "--out", str(out)], cwd=BASE)
         raise SystemExit(r.returncode)
+
+    if engine == "compact":
+        import bidviz_fullimage_compact as compact_engine
+        import build_e1 as be
+        print("运行 AI 全图压缩版汇编（compact，页数目标按项目配置）…")
+        out = compact_engine.assemble(Path(root), out)
+        be._run_post_gates(Path(root), out)   # 编后门禁与 legacy/v13 同等纪律
+        return
 
     if engine == "html":
         import bidviz_html as bh
@@ -459,7 +480,17 @@ def cmd_audit(args) -> None:
         print(f"[OK] HTML 审计：{rep['pages']} 页；"
               f"{'PASS' if rep['ok'] else 'WARN'}；问题 {rep.get('issues', [])[:3]}")
         return
-    pdf = Path(args.pdf) if args.pdf else cfg.output / "施工组织设计-图册-A3.pdf"
+    if not args.pdf:
+        audit_names = {
+            "legacy": "施工组织设计-图册-A3.pdf",
+            "v13": "施工组织设计-图册-A3-v13.pdf",
+            "fullimage": "施工组织设计-图册-A3-fullimage.pdf",
+            "html": "施工组织设计-图册-A3-html.pdf",
+            "compact": "施工组织设计-图册-A3-fullimage-50p.pdf",
+        }
+        pdf = cfg.output / audit_names.get(engine, audit_names["legacy"])
+    else:
+        pdf = Path(args.pdf)
 
     ran_any = False
 
@@ -529,6 +560,7 @@ def cmd_pages(args) -> None:
         "html": "施工组织设计-图册-A3-html.pdf",
         "v13": "施工组织设计-图册-A3-v13.pdf",
         "legacy": "施工组织设计-图册-A3.pdf",
+        "compact": "施工组织设计-图册-A3-fullimage-50p.pdf",
     }
     pdf = Path(args.pdf) if args.pdf else cfg.output / names.get(engine, names["fullimage"])
     if engine == "html":
@@ -722,7 +754,7 @@ def main() -> None:
 
     p = sub.add_parser("generate", help="按规划生图")
     p.add_argument("project")
-    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html"], default=None)
+    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html", "compact"], default=None)
     p.add_argument("--all", action="store_true")
     p.add_argument("--chapter")
     p.add_argument("--section", help="只跑指定节，如 S006 或 S006,S012")
@@ -736,9 +768,10 @@ def main() -> None:
     p = sub.add_parser("build", help="汇编 PDF + 审计")
     p.add_argument("project")
     p.add_argument("--out")
-    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html"], default=None,
+    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html", "compact"], default=None,
                    help="排版引擎：legacy=旧两页体系；v13=V1.3 新体系；"
-                        "fullimage=整页 AI 图；html=局部 AI 图 + HTML/CSS；缺省读 bidviz.toml")
+                        "fullimage=整页 AI 图；html=局部 AI 图 + HTML/CSS；"
+                        "compact=AI 全图压缩版（当前正式交付路线）；缺省读 bidviz.toml")
     p.add_argument("--png", action="store_true", help="html 引擎同时导出真页码 PNG")
     p.add_argument("--draft", action="store_true", help="fullimage 允许候选页并添加 DRAFT 水印")
     p.set_defaults(fn=cmd_build)
@@ -746,7 +779,7 @@ def main() -> None:
     p = sub.add_parser("audit", help="覆盖率审计")
     p.add_argument("project")
     p.add_argument("--pdf")
-    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html"], default=None)
+    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html", "compact"], default=None)
     p.add_argument("--layout", action="store_true", help="跑乱度门禁（audit_layout）")
     p.add_argument("--issues", action="store_true", help="查看 issues.json 门禁状态")
     p.add_argument("--rescan", action="store_true", help="与 --issues 合用：重新扫描并回写")
@@ -766,7 +799,7 @@ def main() -> None:
     p = sub.add_parser("pages", help="PDF 按真实页码导出页图")
     p.add_argument("project")
     p.add_argument("--pdf", help="PDF 路径；缺省按当前引擎选择")
-    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html"], default=None)
+    p.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html", "compact"], default=None)
     p.add_argument("--copy", action="store_true", help="复制而非硬链接（fullimage 用）")
     p.set_defaults(fn=cmd_pages)
 
@@ -781,7 +814,7 @@ def main() -> None:
         parser.add_argument("project")
         if query:
             parser.add_argument("query", nargs="?", default="")
-        parser.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html"], default=None)
+            parser.add_argument("--engine", choices=["legacy", "v13", "fullimage", "html", "compact"], default=None)
         parser.add_argument("--operation", default="")
         parser.add_argument("--section", default="")
         parser.add_argument("--page", default="")

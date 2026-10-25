@@ -48,7 +48,11 @@ MAX_CHARS = 2000
 MAX_SECTIONS = 2
 MIN_WIDTH = 2048
 MIN_HEIGHT = 2800
-HEADER_PROJECT = "安科生物项目35kV电力接入工程"
+
+
+def header_project(cfg) -> str:
+    """页眉项目短语：配置驱动（bidviz_config 红线：代码里不出现客户名）。"""
+    return f"{cfg.name}{cfg.voltage}电力接入工程"
 
 
 @dataclass
@@ -258,7 +262,7 @@ def build_prompt(group: PageGroup, cfg) -> str:
         "\n表格行号必须从 1 开始连续编号，不得跳号、重号。")
     return (tpl
             .replace("{{chapter_hierarchy}}", hierarchy)
-            .replace("{{project_name}}", HEADER_PROJECT)
+            .replace("{{project_name}}", header_project(cfg))
             .replace("{{class_imagery}}", imagery)
             .replace("{{page_note}}", page_note)
             .replace("{{source_text}}", group.text))
@@ -443,7 +447,7 @@ def assemble(root: Path, out_pdf: Path | None = None) -> Path:
         n += 1
         sheet.image(img_path, 0, 0, sheet.w, sheet.h - footer_h, dpi=200, fit="contain")
         if chapter:
-            _fixed_frame(sheet, chapter, n, HEADER_PROJECT)
+            _fixed_frame(sheet, chapter, n, header_project(cfg))
         else:
             sheet.text(sheet.w / 2, sheet.h - footer_h + 7, f"— {n} —",
                        9.0, False, "#5a6e7c", align="center")

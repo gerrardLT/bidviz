@@ -1036,9 +1036,6 @@ def first_table_caption(plan: PagePlan) -> str:
         return str(plan.tables[0].get("caption") or "")
     return ""
 
-    # 6) 页脚
-    footer_skyline(sheet, tk, content_x, y_footer, content_w, plan.footer_note)
-
 
 def compose_page_tc1(sheet: Sheet, tk: dict, plan: PagePlan) -> None:
     """T-C1 构造空间型：构造主图 + 矢量编号叠标 + 原文对应 + 参数表。"""

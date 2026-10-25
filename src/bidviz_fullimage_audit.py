@@ -61,7 +61,8 @@ def _plain_samples(source_lines: list[str]) -> list[str]:
 
 def audit_candidate(image: Path, *, chapter: str, section: str,
                     source_lines: list[str], ocr_texts: list[str] | None,
-                    reference_count: int, min_width: int = 2048) -> dict[str, Any]:
+                    reference_count: int, min_width: int = 2048,
+                    is_cover: bool = False) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     try:
         with Image.open(image) as im:
@@ -79,8 +80,9 @@ def audit_candidate(image: Path, *, chapter: str, section: str,
     add("portrait", "pass" if h > w else "block", "必须为竖版")
     add("aspect-ratio", "pass" if abs(ratio - A3_RATIO) <= 0.035 else "block",
         f"宽高比 {ratio:.4f}；目标 {A3_RATIO:.4f}")
-    add("reference", "pass" if reference_count >= 1 else "block",
-        f"参考图数量 {reference_count}")
+    # 封面有意不传参考图（避免照抄样板章节），豁免 reference 检查
+    add("reference", "pass" if (reference_count >= 1 or is_cover) else "block",
+        f"参考图数量 {reference_count}" + ("（封面豁免）" if is_cover else ""))
 
     if ocr_texts is None:
         add("ocr-unavailable", "block", "OCR/VLM 回读不可用，关键串未核验")

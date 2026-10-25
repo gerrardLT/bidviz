@@ -532,7 +532,7 @@ class ImageAPI:
         if refs: body["image"] = [self._data_uri(p) for p in refs]
         if size: body["size"] = size
         if recorder is not None:
-            recorder.clear()
+            # 只覆盖本层字段，不清空调用方预置的 sid/stem/page/chars/ts 等台账标识
             recorder.update({"endpoint": self.endpoint, "model": self.model, "reference_count": len(refs), "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()})
         req = urllib.request.Request(
             self.endpoint,
@@ -553,7 +553,6 @@ class ImageAPI:
             fields["size"] = size
         body, content_type = self._multipart(fields, {"image": image, "mask": mask})
         if recorder is not None:
-            recorder.clear()
             recorder.update({"endpoint": self.edits_endpoint, "model": self.model, "kind": "edit",
                              "image_sha256": hashlib.sha256(image.read_bytes()).hexdigest(),
                              "mask_sha256": hashlib.sha256(mask.read_bytes()).hexdigest(),

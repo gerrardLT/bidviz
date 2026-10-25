@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -340,7 +341,10 @@ class Sheet:
 
         cache_dir = cache_dir or self.path.parent / "_imgcache"
         cache_dir.mkdir(parents=True, exist_ok=True)
-        key = f"{abs(hash((getattr(src, 'name', 'mem'), img.size, dpi, fit, round(w, 1), round(h, 1)))):x}"
+        # sha256 键：进程间稳定（Python hash 每进程随机化，跨进程永不命中且碎片无限累积）
+        key = hashlib.sha256(
+            f"{getattr(src, 'name', 'mem')}|{img.size}|{dpi}|{fit}|{round(w, 1)}|{round(h, 1)}"
+            .encode("utf-8")).hexdigest()[:24]
         jpg = cache_dir / f"{key}.jpg"
         if not jpg.exists():
             img.save(jpg, "JPEG", quality=85, optimize=True)
