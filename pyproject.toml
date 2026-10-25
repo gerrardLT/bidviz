@@ -21,6 +21,9 @@ windows = ["pywin32>=306"]
 html = ["playwright==1.55.0"]
 dev = ["pytest>=8.0"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [project.scripts]
 bidviz = "bidviz_cli:main"
 

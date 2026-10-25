@@ -11,10 +11,13 @@ sys.path.insert(0, str(BASE / "src"))
 import bidviz_config as cfgmod
 import bidviz_fullimage_compact as compact
 
+_ANKE = BASE / "projects" / "anke-35kv"
+_HAS_BLOCKS = (_ANKE / "work" / "blocks.json").is_file()
 
-class CompactTargetTests(unittest.TestCase):
+
+class CompactConfigTests(unittest.TestCase):
     def test_project_declares_45_to_50_not_global(self):
-        cfg = cfgmod.load(BASE / "projects" / "anke-35kv")
+        cfg = cfgmod.load(_ANKE)
         self.assertEqual(cfg.compact_min_pages, 45)
         self.assertEqual(cfg.compact_max_pages, 50)
         cfgmod.reset()
@@ -26,8 +29,12 @@ class CompactTargetTests(unittest.TestCase):
             self.assertEqual(cfg.compact_max_pages, 0)
         cfgmod.reset()
 
+
+@unittest.skipIf(not _HAS_BLOCKS,
+                 "需要 projects/anke-35kv/work/blocks.json（本机数据，不入库）")
+class CompactPlannerTests(unittest.TestCase):
     def test_planner_respects_project_range(self):
-        root = BASE / "projects" / "anke-35kv"
+        root = _ANKE
         secs = compact.load_sections(root)
         groups, _chars, _sections, total = compact.plan_for_target(
             secs, min_pages=45, max_pages=50)

@@ -4,12 +4,15 @@ from pathlib import Path
 
 import bidviz_v2 as v2
 
+_SOURCE_PDF = next((Path(__file__).parents[1] / "projects" / "anke-35kv" / "inputs").glob("*-source.pdf"), None)
 
+
+@unittest.skipIf(_SOURCE_PDF is None,
+                 "需要 projects/anke-35kv/inputs/*-source.pdf（本机数据，不入库）")
 class BidVizV2Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        inputs = Path(__file__).parents[1] / "projects" / "anke-35kv" / "inputs"
-        cls.pdf = next(inputs.glob("*-source.pdf"))
+        cls.pdf = _SOURCE_PDF
 
     def test_full_document_blocks_are_unique_and_nonempty(self):
         blocks = v2.build_blocks(self.pdf)
