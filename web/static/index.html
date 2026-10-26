@@ -500,15 +500,21 @@ function factsHTML(s) {
 }
 
 /* ---------------- 交互 ---------------- */
+function fitTa(ta) {
+  // 高度自适应内容：下限 96px，封顶 520px（超长正文内部滚动，不撑爆面板）
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(Math.max(ta.scrollHeight + 2, 96), 520) + 'px';
+}
 function bind() {
+  document.querySelectorAll('textarea[data-f]').forEach(el => fitTa(el));
   document.querySelectorAll('.sec-title').forEach(el => {
     el.oninput = () => stash(el.dataset.s, 'title', el.value);
   });
   document.querySelectorAll('textarea[data-f="body"]').forEach(el => {
-    el.oninput = () => stash(el.dataset.s, 'body', el.value);
+    el.oninput = () => { stash(el.dataset.s, 'body', el.value); fitTa(el); };
   });
   document.querySelectorAll('textarea[data-f="prompt"]').forEach(el => {
-    el.oninput = () => stashPrompt(el.dataset.s, el.dataset.no, el.value);
+    el.oninput = () => { stashPrompt(el.dataset.s, el.dataset.no, el.value); fitTa(el); };
   });
   document.querySelectorAll('.chip').forEach(c => {
     c.onclick = () => switchFig(c.dataset.s, c.dataset.no);
@@ -520,6 +526,10 @@ function bind() {
       const box = t.closest('.fields');
       box.querySelector('.ta-prompt').style.display = t.dataset.tab === 'prompt' ? '' : 'none';
       box.querySelector('.ta-body').style.display   = t.dataset.tab === 'body'   ? '' : 'none';
+      // display:none 期间 scrollHeight 为 0，切回时需重新按内容计算高度
+      const shown = t.dataset.tab === 'prompt' ? box.querySelector('.ta-prompt')
+                    : t.dataset.tab === 'body' ? box.querySelector('.ta-body') : null;
+      if (shown) fitTa(shown);
       const st = box.querySelector('.struct');
       st.style.display = t.dataset.tab === 'struct' ? '' : 'none';
       if (t.dataset.tab === 'struct' && !st.dataset.done) {
